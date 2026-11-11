@@ -13,5 +13,6 @@ export type SettingsState = {
   setDefaultFolder: (value: SaveFolderOption) => void;
   setNotificationsEnabled: (value: boolean) => void;
   completeOnboarding: () => void;
+  hydrateSettings: () => void;
 };
 

@@ -62,5 +62,17 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     kvStorage.set(KEYS.ONBOARDING_DONE, true);
     set({ hasCompletedOnboarding: true });
   },
+
+  hydrateSettings: () => {
+    set({
+      wifiOnly: kvStorage.getBoolean(KEYS.WIFI_ONLY) ?? false,
+      maxConcurrent: readInitialMaxConcurrent(),
+      defaultFolder: readInitialFolder(),
+      notificationsEnabled:
+        kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
+      hasCompletedOnboarding:
+        kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
+    });
+  },
 }));
 

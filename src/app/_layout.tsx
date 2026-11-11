@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AddLinkSheet } from '@/features/downloads/components/AddLinkSheet';
 import { hydrateDownloadsAndRecoverQueue } from '@/features/downloads/services/downloadService';
+import { useSettingsStore } from '@/features/settings/store';
 import { colors } from '@/theme';
 
 Notifications.setNotificationHandler({
@@ -21,9 +22,12 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayout() {
+  const hydrateSettings = useSettingsStore((s) => s.hydrateSettings);
+
   useEffect(() => {
+    hydrateSettings();
     hydrateDownloadsAndRecoverQueue();
-  }, []);
+  }, [hydrateSettings]);
 
   return (
     <GestureHandlerRootView style={styles.root}>
