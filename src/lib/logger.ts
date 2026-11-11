@@ -4,3 +4,4 @@ export function logError(context: string, error: unknown): void {
     console.warn(`[rapidex:${context}] ${message}`);
   }
 }
+

@@ -29,3 +29,4 @@ export type DownloadsStoreState = {
   closeAddSheet: () => void;
   setErrorBanner: (message: string | null) => void;
 };
+

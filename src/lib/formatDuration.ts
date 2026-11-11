@@ -37,3 +37,4 @@ export function formatEta(seconds: number | null): string {
   const remMins = mins % 60;
   return `${hrs}h ${remMins}m left`;
 }
+

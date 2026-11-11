@@ -14,3 +14,4 @@ export type SettingsState = {
   setNotificationsEnabled: (value: boolean) => void;
   completeOnboarding: () => void;
 };
+

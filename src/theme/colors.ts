@@ -40,3 +40,4 @@ export const colors = {
   shadowWarm: 'rgba(255, 106, 0, 0.12)',
   shadowDark: 'rgba(20, 22, 26, 0.07)',
 } as const;
+

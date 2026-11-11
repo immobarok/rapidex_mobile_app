@@ -170,3 +170,4 @@ export async function deleteCompletedDownloadsFromDb(): Promise<void> {
     logError('deleteCompletedDownloadsFromDb', err);
   }
 }
+

@@ -12,3 +12,4 @@ export function formatBytes(bytes: number, decimals = 1): string {
   const formatted = index === 0 ? Math.round(value).toString() : value.toFixed(decimals);
   return `${formatted} ${sizes[index]}`;
 }
+

@@ -6,3 +6,4 @@ export function formatSpeed(bytesPerSecond: number): string {
   }
   return `${formatBytes(bytesPerSecond, 1)}/s`;
 }
+

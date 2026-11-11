@@ -13,3 +13,4 @@ export type LibraryFilterState = {
   sortBy: SortOption;
   viewMode: LibraryViewMode;
 };
+

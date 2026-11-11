@@ -83,3 +83,4 @@ export const useDownloadsStore = create<DownloadsStoreState>((set) => ({
       errorBanner: message,
     }),
 }));
+

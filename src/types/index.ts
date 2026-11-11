@@ -34,3 +34,4 @@ export type ActiveProgressSnapshot = {
   speedBytesPerSec: number;
   etaSeconds: number | null;
 };
+

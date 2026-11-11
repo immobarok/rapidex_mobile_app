@@ -131,3 +131,4 @@ export function sanitizeFolderName(rawFolder: string): string {
     .replace(/^_+|_+$/g, '');
   return cleaned || 'Downloads';
 }
+

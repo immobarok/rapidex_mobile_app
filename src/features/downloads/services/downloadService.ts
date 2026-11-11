@@ -506,3 +506,4 @@ export async function clearAllCompletedDownloads(): Promise<void> {
   store.removeCompletedItems();
   await deleteCompletedDownloadsFromDb();
 }
+

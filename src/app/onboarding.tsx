@@ -7,3 +7,4 @@ export default function OnboardingRoute() {
 
   return <OnboardingScreen onFinish={() => router.replace('/(tabs)')} />;
 }
+
