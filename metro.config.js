@@ -8,3 +8,4 @@ if (!config.resolver.assetExts.includes('wasm')) {
 }
 
 module.exports = config;
+

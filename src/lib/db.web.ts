@@ -68,3 +68,4 @@ export async function deleteCompletedDownloadsFromDb(): Promise<void> {
   const items = readAllFromWebStorage().filter((i) => i.status !== 'completed');
   writeAllToWebStorage(items);
 }
+
