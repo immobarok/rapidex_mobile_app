@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   blobContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
   topRightBlob: {

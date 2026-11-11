@@ -6,17 +6,37 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rapidex",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.rapidex.app",
+      "supportsTablet": true,
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "processing"
+        ],
+        "NSUserNotificationsUsageDescription": "Rapidex sends a local notification when your background file downloads complete."
+      }
     },
     "android": {
+      "package": "com.rapidex.app",
+      "supportsPictureInPicture": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -28,9 +48,23 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6A00"
         }
       ]
     ],

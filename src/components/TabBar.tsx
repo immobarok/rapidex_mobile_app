@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -8,7 +7,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/theme';
 
-type Props = BottomTabBarProps & {
+type TabRoute = {
+  key: string;
+  name: string;
+};
+
+type Props = {
+  state: {
+    index: number;
+    routes: TabRoute[];
+  };
+  navigateToTab?: (routeKey: string) => void;
+  navigation?: {
+    navigate: (name: string) => void;
+  };
   onOpenAddSheet: () => void;
   activeCount: number;
 };
@@ -29,6 +41,7 @@ const TAB_CONFIG: Record<
 
 export const TabBar = memo(function TabBar({
   state,
+  navigateToTab,
   navigation,
   onOpenAddSheet,
   activeCount,
@@ -63,13 +76,12 @@ export const TabBar = memo(function TabBar({
 
             const handleTabPress = () => {
               Haptics.selectionAsync().catch(() => undefined);
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
+              if (!isFocused) {
+                if (navigateToTab) {
+                  navigateToTab(route.key);
+                } else {
+                  navigation?.navigate(route.name);
+                }
               }
             };
 

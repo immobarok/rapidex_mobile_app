@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   labelWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
