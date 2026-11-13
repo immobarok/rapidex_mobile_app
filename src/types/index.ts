@@ -22,6 +22,7 @@ export type DownloadItemRecord = {
   status: DownloadStatus;
   errorMessage: string | null;
   resumeData: string | null;
+  headersJson?: string | null;
   createdAt: number;
   completedAt: number | null;
   lastPlaybackPositionMs: number;
@@ -34,4 +35,3 @@ export type ActiveProgressSnapshot = {
   speedBytesPerSec: number;
   etaSeconds: number | null;
 };
-

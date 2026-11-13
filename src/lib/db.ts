@@ -15,6 +15,7 @@ type DbRow = {
   status: string;
   error_message: string | null;
   resume_data: string | null;
+  headers_json: string | null;
   created_at: number;
   completed_at: number | null;
   last_playback_position_ms: number;
@@ -42,12 +43,20 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
           status TEXT NOT NULL,
           error_message TEXT,
           resume_data TEXT,
+          headers_json TEXT,
           created_at INTEGER NOT NULL,
           completed_at INTEGER,
           last_playback_position_ms INTEGER NOT NULL DEFAULT 0,
           duration_ms INTEGER NOT NULL DEFAULT 0
         );
       `);
+      // Migrate older schema if headers_json column does not exist yet
+      const columns = await db.getAllAsync<{ name: string }>(
+        'PRAGMA table_info(downloads);'
+      );
+      if (!columns.some((col) => col.name === 'headers_json')) {
+        await db.execAsync('ALTER TABLE downloads ADD COLUMN headers_json TEXT;');
+      }
       return db;
     })();
   }
@@ -68,6 +77,7 @@ function mapRowToRecord(row: DbRow): DownloadItemRecord {
     status: row.status as DownloadStatus,
     errorMessage: row.error_message,
     resumeData: row.resume_data,
+    headersJson: row.headers_json ?? null,
     createdAt: row.created_at,
     completedAt: row.completed_at,
     lastPlaybackPositionMs: row.last_playback_position_ms,
@@ -95,8 +105,8 @@ export async function upsertDownloadInDb(item: DownloadItemRecord): Promise<void
       `INSERT INTO downloads (
         id, url, file_name, local_uri, folder, category, mime_type,
         total_bytes, downloaded_bytes, status, error_message, resume_data,
-        created_at, completed_at, last_playback_position_ms, duration_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        headers_json, created_at, completed_at, last_playback_position_ms, duration_ms
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         file_name = excluded.file_name,
         local_uri = excluded.local_uri,
@@ -108,6 +118,7 @@ export async function upsertDownloadInDb(item: DownloadItemRecord): Promise<void
         status = excluded.status,
         error_message = excluded.error_message,
         resume_data = excluded.resume_data,
+        headers_json = excluded.headers_json,
         completed_at = excluded.completed_at,
         last_playback_position_ms = excluded.last_playback_position_ms,
         duration_ms = excluded.duration_ms;`,
@@ -123,6 +134,7 @@ export async function upsertDownloadInDb(item: DownloadItemRecord): Promise<void
       item.status,
       item.errorMessage,
       item.resumeData,
+      item.headersJson ?? null,
       item.createdAt,
       item.completedAt,
       item.lastPlaybackPositionMs,
@@ -171,3 +183,11 @@ export async function deleteCompletedDownloadsFromDb(): Promise<void> {
   }
 }
 
+export async function deleteFailedDownloadsFromDb(): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.runAsync("DELETE FROM downloads WHERE status = 'failed';");
+  } catch (err) {
+    logError('deleteFailedDownloadsFromDb', err);
+  }
+}
