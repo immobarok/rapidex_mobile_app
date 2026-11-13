@@ -203,15 +203,15 @@ export const TabBar = memo(function TabBar({
               styles.barContainer,
               Platform.OS === 'web'
                 ? ({
-                    backdropFilter: 'blur(24px) saturate(140%)',
-                    WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                    backdropFilter: 'blur(10px) saturate(120%)',
+                    WebkitBackdropFilter: 'blur(10px) saturate(120%)',
                   } as unknown as ViewStyle)
                 : undefined,
             ]}
           >
             {Platform.OS !== 'web' ? (
               <BlurView
-                intensity={56}
+                intensity={20}
                 tint="dark"
                 style={StyleSheet.absoluteFill}
               />
