@@ -18,6 +18,7 @@ export type DiscoverArticle = {
   title: string;
   source: string;
   url: string;
+  imageUrl: string;
   icon: keyof typeof Ionicons.glyphMap;
 };
 

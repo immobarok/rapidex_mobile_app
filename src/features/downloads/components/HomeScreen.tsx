@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
@@ -524,26 +525,31 @@ export function HomeScreen() {
             <Pressable
               key={article.id}
               onPress={() => handleOpenApp(article.url)}
-              style={styles.articleRow}
+              style={styles.articleCard}
               accessibilityRole="button"
               accessibilityLabel={`Read ${article.title}`}
             >
-              <View style={styles.articleIconWrap}>
-                <Ionicons name={article.icon} size={22} color={colors.accent} />
-              </View>
-              <View style={styles.articleBody}>
-                <Text style={styles.articleTitle} numberOfLines={2}>
-                  {article.title}
-                </Text>
-                <Text style={styles.articleSource}>
-                  {article.source} • {article.category}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={colors.textMuted}
+              <Image
+                source={{ uri: article.imageUrl }}
+                style={styles.articleImage}
+                contentFit="cover"
+                transition={200}
               />
+              <View style={styles.articleFooter}>
+                <View style={styles.articleBody}>
+                  <Text style={styles.articleTitle} numberOfLines={2}>
+                    {article.title}
+                  </Text>
+                  <Text style={styles.articleSource}>
+                    {article.source} • {article.category}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </View>
             </Pressable>
           ))}
         </GlassCard>
@@ -932,21 +938,23 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '700',
   },
-  articleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  articleCard: {
     gap: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
   },
-  articleIconWrap: {
-    width: 44,
-    height: 44,
+  articleImage: {
+    width: '100%',
+    height: 170,
     borderRadius: radius.md,
-    backgroundColor: colors.accentSurface,
+    backgroundColor: colors.skeletonBase,
+  },
+  articleFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
   },
   articleBody: {
     flex: 1,

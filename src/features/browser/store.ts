@@ -87,6 +87,7 @@ export const DISCOVER_ARTICLES: DiscoverArticle[] = [
     title: 'Latest Global Headlines, Breaking Stories & Live Updates',
     source: 'Reuters',
     url: 'https://www.reuters.com',
+    imageUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=900&q=80',
     icon: 'newspaper-outline',
   },
   {
@@ -95,14 +96,16 @@ export const DISCOVER_ARTICLES: DiscoverArticle[] = [
     title: 'Open Source Releases, Mobile Hardware & Developer News',
     source: 'Hacker News',
     url: 'https://news.ycombinator.com',
+    imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80',
     icon: 'hardware-chip-outline',
   },
   {
     id: 'disc-3',
     category: 'Sports',
-    title: 'Live Football Scores, Fixtures & Match Highlights',
+    title: 'Live Football Scores, Fixtures & Match Highlights Today',
     source: 'BBC Sport',
     url: 'https://www.bbc.com/sport',
+    imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80',
     icon: 'football-outline',
   },
   {
@@ -111,6 +114,7 @@ export const DISCOVER_ARTICLES: DiscoverArticle[] = [
     title: 'Top World News, Science & Culture Stories Today',
     source: 'BBC News',
     url: 'https://www.bbc.com/news',
+    imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=900&q=80',
     icon: 'earth-outline',
   },
 ];
