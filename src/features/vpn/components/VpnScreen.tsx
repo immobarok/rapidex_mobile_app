@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { GlassCard } from '@/components/GlassCard';
@@ -25,10 +26,10 @@ function formatElapsed(startedAt: number | null, now: number): string {
   return [hrs, mins, secs].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
-function getStatusLabel(status: VpnStatus): string {
-  if (status === 'connected') return 'Protected & Encrypted';
-  if (status === 'connecting') return 'Establishing Tunnel...';
-  return 'Not Connected';
+function getActionLabel(status: VpnStatus): string {
+  if (status === 'connected') return 'Tap to Disconnect';
+  if (status === 'connecting') return 'Connecting...';
+  return 'Tap to Connect';
 }
 
 export function VpnScreen() {
@@ -46,6 +47,7 @@ export function VpnScreen() {
   const setAutoConnectEnabled = useVpnStore((s) => s.setAutoConnectEnabled);
 
   const [now, setNow] = useState(() => Date.now());
+  const [isServerListOpen, setIsServerListOpen] = useState(false);
 
   useEffect(() => {
     if (status !== 'connected') return;
@@ -59,23 +61,33 @@ export function VpnScreen() {
     [selectedServerId],
   );
 
+  const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+
+  const { downKbps, upKbps } = useMemo(() => {
+    if (!isConnected) return { downKbps: 0, upKbps: 0 };
+    const tick = Math.floor(now / 1000);
+    return {
+      downKbps: 42 + ((tick * 13) % 86),
+      upKbps: 118 + ((tick * 17) % 64),
+    };
+  }, [isConnected, now]);
+
   const handleToggle = () => {
-    triggerHaptic(status === 'connected' ? 'light' : 'medium');
+    triggerHaptic(isConnected ? 'light' : 'medium');
     toggleConnection();
   };
 
   const handleSelectServer = (server: VpnServer) => {
     triggerHaptic('selection');
     selectServer(server.id);
+    setIsServerListOpen(false);
   };
 
   const handleSelectProtocol = (next: VpnProtocol) => {
     triggerHaptic('selection');
     setProtocol(next);
   };
-
-  const isConnected = status === 'connected';
-  const isConnecting = status === 'connecting';
 
   return (
     <BackgroundBlobs>
@@ -84,15 +96,84 @@ export function VpnScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>Rapidex VPN</Text>
+          <Text style={styles.screenTitle}>VPN</Text>
+
+          <View style={styles.speedRow}>
+            <GlassCard style={styles.speedCard} contentStyle={styles.speedContent}>
+              <View style={styles.speedIconBox}>
+                <Ionicons name="arrow-down" size={18} color={colors.textOnAccent} />
+              </View>
+              <View style={styles.speedTextCol}>
+                <Text style={styles.speedLabel}>Download</Text>
+                <Text style={styles.speedValue}>{downKbps} KB/s</Text>
+              </View>
+            </GlassCard>
+
+            <GlassCard style={styles.speedCard} contentStyle={styles.speedContent}>
+              <View style={styles.speedIconBox}>
+                <Ionicons name="arrow-up" size={18} color={colors.textOnAccent} />
+              </View>
+              <View style={styles.speedTextCol}>
+                <Text style={styles.speedLabel}>Upload</Text>
+                <Text style={styles.speedValue}>{upKbps} KB/s</Text>
+              </View>
+            </GlassCard>
+          </View>
+
+          <View style={styles.ringsWrap}>
             <View
               style={[
-                styles.statusBadge,
-                isConnected && styles.statusBadgeConnected,
-                isConnecting && styles.statusBadgeConnecting,
+                styles.dashedRingOuter,
+                isConnected && styles.dashedRingActive,
               ]}
             >
+              <View
+                style={[
+                  styles.dashedRingMiddle,
+                  isConnected && styles.dashedRingActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.dashedRingInner,
+                    isConnected && styles.dashedRingActive,
+                  ]}
+                >
+                  <Pressable
+                    onPress={handleToggle}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isConnected ? 'Disconnect VPN' : 'Connect VPN'
+                    }
+                    style={({ pressed }) => [
+                      styles.boltButton,
+                      pressed && styles.boltButtonPressed,
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={
+                        isConnected
+                          ? [colors.success, '#22C55E']
+                          : [colors.accent, colors.accentLight]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.boltGradient}
+                    >
+                      <Ionicons name="flash" size={56} color={colors.textOnAccent} />
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+            <Text style={styles.tapPrompt}>{getActionLabel(status)}</Text>
+          </View>
+
+          <GlassCard enableBlur contentStyle={styles.timerCard}>
+            <Text style={styles.timerValue}>
+              {formatElapsed(connectedAt, now)}
+            </Text>
+            <View style={styles.statusRow}>
               <View
                 style={[
                   styles.statusDot,
@@ -102,77 +183,91 @@ export function VpnScreen() {
               />
               <Text
                 style={[
-                  styles.statusBadgeText,
-                  isConnected && styles.statusBadgeTextConnected,
+                  styles.statusText,
+                  isConnected && styles.statusTextConnected,
                 ]}
               >
-                {status === 'connected'
-                  ? 'VPN Active'
-                  : status === 'connecting'
-                    ? 'Connecting'
-                    : 'Standby'}
-              </Text>
-            </View>
-          </View>
-
-          <GlassCard enableBlur style={styles.heroCard}>
-            <View style={styles.heroCenter}>
-              <Pressable
-                onPress={handleToggle}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  isConnected ? 'Disconnect VPN' : 'Connect VPN'
-                }
-                style={({ pressed }) => [
-                  styles.powerRing,
-                  isConnected && styles.powerRingConnected,
-                  isConnecting && styles.powerRingConnecting,
-                  pressed && styles.powerRingPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.powerCore,
-                    isConnected && styles.powerCoreConnected,
-                  ]}
-                >
-                  <Ionicons
-                    name={isConnected ? 'shield-checkmark' : 'power'}
-                    size={38}
-                    color={
-                      isConnected ? colors.textOnAccent : colors.accent
-                    }
-                  />
-                </View>
-              </Pressable>
-
-              <Text style={styles.heroStatusText}>{getStatusLabel(status)}</Text>
-              <Text style={styles.heroSubText}>
                 {isConnected
-                  ? `${activeServer.country} • ${activeServer.ipMask} • ${formatElapsed(connectedAt, now)}`
-                  : `Selected: ${activeServer.country} (${activeServer.city})`}
+                  ? 'Connected'
+                  : isConnecting
+                    ? 'Connecting...'
+                    : 'Disconnected'}
               </Text>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Protocol</Text>
-                <Text style={styles.statValue}>{protocol}</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Latency</Text>
-                <Text style={styles.statValue}>{activeServer.latencyMs} ms</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Load</Text>
-                <Text style={styles.statValue}>{activeServer.loadPercent}%</Text>
-              </View>
             </View>
           </GlassCard>
 
-          <GlassCard style={styles.sectionCard}>
+          <GlassCard contentStyle={styles.selectedServerCard}>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('selection');
+                setIsServerListOpen((prev) => !prev);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Change VPN server location"
+              style={styles.selectedServerRow}
+            >
+              <View style={styles.serverBadge}>
+                <Text style={styles.serverCode}>{activeServer.code}</Text>
+              </View>
+              <View style={styles.serverInfo}>
+                <Text style={styles.serverCountry}>{activeServer.country}</Text>
+                <Text style={styles.serverCity}>{activeServer.city}</Text>
+              </View>
+              <View style={styles.serverRight}>
+                <Text style={styles.serverPing}>{activeServer.latencyMs}ms</Text>
+                <Ionicons
+                  name="cellular"
+                  size={16}
+                  color={colors.success}
+                />
+                <Ionicons
+                  name={isServerListOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </View>
+            </Pressable>
+
+            {isServerListOpen ? (
+              <View style={styles.serverList}>
+                {VPN_SERVERS.map((server) => {
+                  const isSelected = server.id === activeServer.id;
+                  return (
+                    <Pressable
+                      key={server.id}
+                      onPress={() => handleSelectServer(server)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select ${server.country} server`}
+                      style={[
+                        styles.serverRow,
+                        isSelected && styles.serverRowActive,
+                      ]}
+                    >
+                      <View style={styles.serverBadgeSmall}>
+                        <Text style={styles.serverCode}>{server.code}</Text>
+                      </View>
+                      <View style={styles.serverInfo}>
+                        <Text style={styles.serverCountry}>
+                          {server.country}
+                        </Text>
+                        <Text style={styles.serverCity}>
+                          {server.city} • {server.loadPercent}% load
+                        </Text>
+                      </View>
+                      <Text style={styles.serverPing}>{server.latencyMs}ms</Text>
+                      <Ionicons
+                        name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                        size={18}
+                        color={isSelected ? colors.accent : colors.textMuted}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+          </GlassCard>
+
+          <GlassCard contentStyle={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Tunnel Protocol</Text>
             <View style={styles.protocolRow}>
               {(['WireGuard', 'IKEv2'] as const).map((item) => {
@@ -189,9 +284,15 @@ export function VpnScreen() {
                     ]}
                   >
                     <Ionicons
-                      name={item === 'WireGuard' ? 'flash-outline' : 'lock-closed-outline'}
+                      name={
+                        item === 'WireGuard'
+                          ? 'flash-outline'
+                          : 'lock-closed-outline'
+                      }
                       size={16}
-                      color={isSelected ? colors.textOnAccent : colors.textPrimary}
+                      color={
+                        isSelected ? colors.textOnAccent : colors.textPrimary
+                      }
                     />
                     <Text
                       style={[
@@ -243,45 +344,6 @@ export function VpnScreen() {
             </View>
           </GlassCard>
 
-          <GlassCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Server Locations</Text>
-            {VPN_SERVERS.map((server, idx) => {
-              const isSelected = server.id === activeServer.id;
-              const isLast = idx === VPN_SERVERS.length - 1;
-              return (
-                <Pressable
-                  key={server.id}
-                  onPress={() => handleSelectServer(server)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Select ${server.country} server`}
-                  style={[
-                    styles.serverRow,
-                    isSelected && styles.serverRowActive,
-                    isLast && styles.serverRowLast,
-                  ]}
-                >
-                  <View style={styles.serverBadge}>
-                    <Text style={styles.serverCode}>{server.code}</Text>
-                  </View>
-                  <View style={styles.serverInfo}>
-                    <Text style={styles.serverCountry}>{server.country}</Text>
-                    <Text style={styles.serverCity}>
-                      {server.city} • {server.loadPercent}% load
-                    </Text>
-                  </View>
-                  <View style={styles.serverRight}>
-                    <Text style={styles.serverPing}>{server.latencyMs} ms</Text>
-                    <Ionicons
-                      name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                      size={20}
-                      color={isSelected ? colors.accent : colors.textMuted}
-                    />
-                  </View>
-                </Pressable>
-              );
-            })}
-          </GlassCard>
-
           <View style={styles.noteCard}>
             <Ionicons
               name="information-circle-outline"
@@ -291,7 +353,8 @@ export function VpnScreen() {
             <Text style={styles.noteText}>
               VPN profile, server, and kill-switch preferences are saved locally.
               System-wide packet routing requires native NEPacketTunnelProvider
-              (iOS) or VpnService (Android) tunnel credentials in a production build.
+              (iOS) or VpnService (Android) tunnel credentials in a production
+              build.
             </Text>
           </View>
         </ScrollView>
@@ -310,37 +373,124 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.huge + spacing.xxl,
     gap: spacing.md,
   },
-  header: {
+  screenTitle: {
+    ...typography.title,
+    color: colors.accent,
+    textAlign: 'center',
+  },
+  speedRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  speedCard: {
+    flex: 1,
+  },
+  speedContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
-  title: {
-    ...typography.largeTitle,
+  speedIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speedTextCol: {
+    flex: 1,
+  },
+  speedLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  speedValue: {
+    ...typography.bodyStrong,
+    color: colors.accent,
+    fontVariant: ['tabular-nums'],
+  },
+  ringsWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    gap: spacing.md,
+  },
+  dashedRingOuter: {
+    width: 244,
+    height: 244,
+    borderRadius: 122,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashedRingMiddle: {
+    width: 206,
+    height: 206,
+    borderRadius: 103,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashedRingInner: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashedRingActive: {
+    borderColor: colors.success,
+  },
+  boltButton: {
+    width: 138,
+    height: 138,
+    borderRadius: 69,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  boltButtonPressed: {
+    transform: [{ scale: 0.96 }],
+  },
+  boltGradient: {
+    flex: 1,
+    borderRadius: 69,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tapPrompt: {
+    ...typography.title,
     color: colors.textPrimary,
   },
-  statusBadge: {
+  timerCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+  },
+  timerValue: {
+    ...typography.hero,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs + 2,
-    borderRadius: radius.pill,
-    backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  statusBadgeConnected: {
-    backgroundColor: colors.successSurface,
-    borderColor: colors.success,
-  },
-  statusBadgeConnecting: {
-    backgroundColor: colors.warningSurface,
-    borderColor: colors.warning,
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 9,
+    height: 9,
     borderRadius: radius.pill,
     backgroundColor: colors.textMuted,
   },
@@ -350,92 +500,88 @@ const styles = StyleSheet.create({
   statusDotConnecting: {
     backgroundColor: colors.warning,
   },
-  statusBadgeText: {
-    ...typography.caption,
+  statusText: {
+    ...typography.bodyStrong,
     color: colors.textSecondary,
   },
-  statusBadgeTextConnected: {
+  statusTextConnected: {
     color: colors.success,
   },
-  heroCard: {
-    paddingVertical: spacing.xs,
+  selectedServerCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
   },
-  heroCenter: {
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  powerRing: {
-    width: 112,
-    height: 112,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accentSurface,
-    borderWidth: 2,
-    borderColor: colors.accentBorder,
-    marginBottom: spacing.md,
-  },
-  powerRingConnected: {
-    backgroundColor: colors.accentGlow,
-    borderColor: colors.accent,
-  },
-  powerRingConnecting: {
-    borderColor: colors.warning,
-  },
-  powerRingPressed: {
-    transform: [{ scale: 0.96 }],
-  },
-  powerCore: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.accentBorder,
-  },
-  powerCoreConnected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  heroStatusText: {
-    ...typography.title,
-    color: colors.textPrimary,
-  },
-  heroSubText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xxs,
-    textAlign: 'center',
-  },
-  statsRow: {
+  selectedServerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+    minHeight: spacing.touchMin,
+  },
+  serverList: {
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
+    paddingTop: spacing.xs,
+    gap: 2,
   },
-  statBox: {
-    flex: 1,
+  serverRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 48,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+    gap: spacing.xs,
   },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.borderSubtle,
+  serverRowActive: {
+    backgroundColor: colors.accentSurface,
   },
-  statLabel: {
-    ...typography.small,
-    color: colors.textSecondary,
+  serverBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+    borderWidth: 1,
+    borderColor: colors.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
-  statValue: {
+  serverBadgeSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.xs,
+  },
+  serverCode: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  serverInfo: {
+    flex: 1,
+  },
+  serverCountry: {
     ...typography.bodyStrong,
     color: colors.textPrimary,
-    marginTop: 2,
+  },
+  serverCity: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  serverRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  serverPing: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '600',
   },
   sectionCard: {
+    padding: spacing.md,
     gap: spacing.sm,
   },
   sectionTitle: {
@@ -493,58 +639,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  serverRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 54,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  serverRowActive: {
-    backgroundColor: colors.accentSurface,
-    borderBottomColor: 'transparent',
-  },
-  serverRowLast: {
-    borderBottomWidth: 0,
-  },
-  serverBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  serverCode: {
-    ...typography.bodyStrong,
-    color: colors.textPrimary,
-  },
-  serverInfo: {
-    flex: 1,
-  },
-  serverCountry: {
-    ...typography.bodyStrong,
-    color: colors.textPrimary,
-  },
-  serverCity: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  serverRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  serverPing: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
   noteCard: {
     flexDirection: 'row',
