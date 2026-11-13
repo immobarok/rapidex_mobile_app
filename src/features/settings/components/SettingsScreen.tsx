@@ -42,10 +42,14 @@ export function SettingsScreen() {
   const maxConcurrent = useSettingsStore((s) => s.maxConcurrent);
   const defaultFolder = useSettingsStore((s) => s.defaultFolder);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
+  const autoRouteFolders = useSettingsStore((s) => s.autoRouteFolders);
+  const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const setWifiOnly = useSettingsStore((s) => s.setWifiOnly);
   const setMaxConcurrent = useSettingsStore((s) => s.setMaxConcurrent);
   const setDefaultFolder = useSettingsStore((s) => s.setDefaultFolder);
   const setNotificationsEnabled = useSettingsStore((s) => s.setNotificationsEnabled);
+  const setAutoRouteFolders = useSettingsStore((s) => s.setAutoRouteFolders);
+  const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
 
   const [freeDiskBytes, setFreeDiskBytes] = useState<number>(0);
   const [totalDiskBytes, setTotalDiskBytes] = useState<number>(0);
@@ -146,6 +150,40 @@ export function SettingsScreen() {
               }}
               trackColor={{ false: colors.borderSubtle, true: colors.accent }}
               accessibilityLabel="Wi-Fi only downloads"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingLabel}>Smart Folder Routing</Text>
+              <Text style={styles.settingHint}>
+                Auto-sort videos, music, and documents into matching folders
+              </Text>
+            </View>
+            <Switch
+              value={autoRouteFolders}
+              onValueChange={setAutoRouteFolders}
+              trackColor={{ false: colors.borderSubtle, true: colors.accent }}
+              accessibilityLabel="Smart folder routing"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingLabel}>Haptic Feedback</Text>
+              <Text style={styles.settingHint}>
+                Subtle tactile feedback on buttons and gestures
+              </Text>
+            </View>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={setHapticsEnabled}
+              trackColor={{ false: colors.borderSubtle, true: colors.accent }}
+              accessibilityLabel="Haptic feedback"
             />
           </View>
 
