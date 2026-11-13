@@ -8,7 +8,16 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { GlassCard } from '@/components/GlassCard';
@@ -28,8 +37,14 @@ function formatElapsed(startedAt: number | null, now: number): string {
 
 function getActionLabel(status: VpnStatus): string {
   if (status === 'connected') return 'Tap to Disconnect';
-  if (status === 'connecting') return 'Connecting...';
+  if (status === 'connecting') return 'Securing Tunnel...';
   return 'Tap to Connect';
+}
+
+function getPingColor(latencyMs: number): string {
+  if (latencyMs <= 65) return colors.success;
+  if (latencyMs <= 105) return colors.warning;
+  return colors.accent;
 }
 
 export function VpnScreen() {
@@ -46,8 +61,12 @@ export function VpnScreen() {
   const setKillSwitchEnabled = useVpnStore((s) => s.setKillSwitchEnabled);
   const setAutoConnectEnabled = useVpnStore((s) => s.setAutoConnectEnabled);
 
+  const reduceMotion = useReducedMotion();
+  const pulse = useSharedValue(1);
+
   const [now, setNow] = useState(() => Date.now());
   const [isServerListOpen, setIsServerListOpen] = useState(false);
+  const [copiedIp, setCopiedIp] = useState(false);
 
   useEffect(() => {
     if (status !== 'connected') return;
@@ -56,22 +75,50 @@ export function VpnScreen() {
     return () => clearInterval(id);
   }, [status]);
 
+  useEffect(() => {
+    if (reduceMotion || status === 'disconnected') {
+      pulse.value = withTiming(1, { duration: 220 });
+      return;
+    }
+    const target = status === 'connecting' ? 1.07 : 1.035;
+    const duration = status === 'connecting' ? 650 : 1400;
+    pulse.value = withRepeat(
+      withTiming(target, { duration, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+  }, [pulse, reduceMotion, status]);
+
+  const pulseRingStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
   const activeServer = useMemo(
     () => VPN_SERVERS.find((s) => s.id === selectedServerId) ?? VPN_SERVERS[0],
     [selectedServerId],
   );
 
+  const fastestServer = useMemo(
+    () =>
+      VPN_SERVERS.reduce((best, item) =>
+        item.latencyMs < best.latencyMs ? item : best,
+      ),
+    [],
+  );
+
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
 
-  const { downKbps, upKbps } = useMemo(() => {
-    if (!isConnected) return { downKbps: 0, upKbps: 0 };
-    const tick = Math.floor(now / 1000);
-    return {
-      downKbps: 42 + ((tick * 13) % 86),
-      upKbps: 118 + ((tick * 17) % 64),
-    };
-  }, [isConnected, now]);
+  const { downKbps, upKbps, sessionMb } = useMemo(() => {
+    if (!isConnected || !connectedAt) {
+      return { downKbps: 0, upKbps: 0, sessionMb: '0.0' };
+    }
+    const elapsedSec = Math.max(1, Math.floor((now - connectedAt) / 1000));
+    const down = 48 + ((elapsedSec * 13) % 94);
+    const up = 122 + ((elapsedSec * 17) % 68);
+    const totalMb = ((elapsedSec * 165) / 1024).toFixed(1);
+    return { downKbps: down, upKbps: up, sessionMb: totalMb };
+  }, [connectedAt, isConnected, now]);
 
   const handleToggle = () => {
     triggerHaptic(isConnected ? 'light' : 'medium');
@@ -84,10 +131,26 @@ export function VpnScreen() {
     setIsServerListOpen(false);
   };
 
+  const handleSelectFastest = () => {
+    triggerHaptic('selection');
+    selectServer(fastestServer.id);
+    setIsServerListOpen(false);
+  };
+
   const handleSelectProtocol = (next: VpnProtocol) => {
     triggerHaptic('selection');
     setProtocol(next);
   };
+
+  const handleCopyIp = async () => {
+    triggerHaptic('selection');
+    await Clipboard.setStringAsync(activeServer.ipMask).catch(() => undefined);
+    setCopiedIp(true);
+    setTimeout(() => setCopiedIp(false), 1600);
+  };
+
+  const cipherLabel =
+    protocol === 'WireGuard' ? 'ChaCha20-Poly1305' : 'AES-256-GCM';
 
   return (
     <BackgroundBlobs>
@@ -96,12 +159,50 @@ export function VpnScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.screenTitle}>VPN</Text>
+          <View style={styles.header}>
+            <View
+              style={[
+                styles.securityPill,
+                isConnected && styles.securityPillActive,
+              ]}
+            >
+              <Ionicons
+                name={isConnected ? 'lock-closed' : 'lock-open-outline'}
+                size={13}
+                color={isConnected ? colors.success : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.securityPillText,
+                  isConnected && styles.securityPillTextActive,
+                ]}
+              >
+                {isConnected ? 'Encrypted' : 'Standby'}
+              </Text>
+            </View>
+
+            <Text style={styles.screenTitle}>Rapidex VPN</Text>
+
+            <Pressable
+              onPress={handleSelectFastest}
+              accessibilityRole="button"
+              accessibilityLabel="Select fastest VPN server"
+              style={styles.fastestBtn}
+            >
+              <Ionicons name="speedometer-outline" size={14} color={colors.accent} />
+              <Text style={styles.fastestBtnText}>Fastest</Text>
+            </Pressable>
+          </View>
 
           <View style={styles.speedRow}>
             <GlassCard style={styles.speedCard} contentStyle={styles.speedContent}>
-              <View style={styles.speedIconBox}>
-                <Ionicons name="arrow-down" size={18} color={colors.textOnAccent} />
+              <View
+                style={[
+                  styles.speedIconBox,
+                  isConnected && styles.speedIconBoxActive,
+                ]}
+              >
+                <Ionicons name="arrow-down" size={17} color={colors.textOnAccent} />
               </View>
               <View style={styles.speedTextCol}>
                 <Text style={styles.speedLabel}>Download</Text>
@@ -110,8 +211,13 @@ export function VpnScreen() {
             </GlassCard>
 
             <GlassCard style={styles.speedCard} contentStyle={styles.speedContent}>
-              <View style={styles.speedIconBox}>
-                <Ionicons name="arrow-up" size={18} color={colors.textOnAccent} />
+              <View
+                style={[
+                  styles.speedIconBox,
+                  isConnected && styles.speedIconBoxActive,
+                ]}
+              >
+                <Ionicons name="arrow-up" size={17} color={colors.textOnAccent} />
               </View>
               <View style={styles.speedTextCol}>
                 <Text style={styles.speedLabel}>Upload</Text>
@@ -121,10 +227,11 @@ export function VpnScreen() {
           </View>
 
           <View style={styles.ringsWrap}>
-            <View
+            <Animated.View
               style={[
                 styles.dashedRingOuter,
                 isConnected && styles.dashedRingActive,
+                pulseRingStyle,
               ]}
             >
               <View
@@ -147,6 +254,7 @@ export function VpnScreen() {
                     }
                     style={({ pressed }) => [
                       styles.boltButton,
+                      isConnected && styles.boltButtonConnected,
                       pressed && styles.boltButtonPressed,
                     ]}
                   >
@@ -160,12 +268,16 @@ export function VpnScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.boltGradient}
                     >
-                      <Ionicons name="flash" size={56} color={colors.textOnAccent} />
+                      <Ionicons
+                        name={isConnected ? 'shield-checkmark' : 'flash'}
+                        size={52}
+                        color={colors.textOnAccent}
+                      />
                     </LinearGradient>
                   </Pressable>
                 </View>
               </View>
-            </View>
+            </Animated.View>
             <Text style={styles.tapPrompt}>{getActionLabel(status)}</Text>
           </View>
 
@@ -188,11 +300,41 @@ export function VpnScreen() {
                 ]}
               >
                 {isConnected
-                  ? 'Connected'
+                  ? `Connected • ${sessionMb} MB routed`
                   : isConnecting
-                    ? 'Connecting...'
+                    ? 'Negotiating handshake...'
                     : 'Disconnected'}
               </Text>
+            </View>
+
+            <View style={styles.telemetryGrid}>
+              <Pressable
+                onPress={handleCopyIp}
+                style={styles.telemetryItem}
+                accessibilityRole="button"
+                accessibilityLabel="Copy virtual IP address"
+              >
+                <Text style={styles.telemetryLabel}>Virtual IP</Text>
+                <View style={styles.ipRow}>
+                  <Text style={styles.telemetryValue}>
+                    {copiedIp ? 'Copied!' : activeServer.ipMask}
+                  </Text>
+                  <Ionicons
+                    name={copiedIp ? 'checkmark' : 'copy-outline'}
+                    size={13}
+                    color={colors.accent}
+                  />
+                </View>
+              </Pressable>
+
+              <View style={styles.telemetryDivider} />
+
+              <View style={styles.telemetryItem}>
+                <Text style={styles.telemetryLabel}>Cipher</Text>
+                <Text style={styles.telemetryValue} numberOfLines={1}>
+                  {cipherLabel}
+                </Text>
+              </View>
             </View>
           </GlassCard>
 
@@ -211,14 +353,23 @@ export function VpnScreen() {
               </View>
               <View style={styles.serverInfo}>
                 <Text style={styles.serverCountry}>{activeServer.country}</Text>
-                <Text style={styles.serverCity}>{activeServer.city}</Text>
+                <Text style={styles.serverCity}>
+                  {activeServer.city} • {activeServer.loadPercent}% load
+                </Text>
               </View>
               <View style={styles.serverRight}>
-                <Text style={styles.serverPing}>{activeServer.latencyMs}ms</Text>
+                <Text
+                  style={[
+                    styles.serverPing,
+                    { color: getPingColor(activeServer.latencyMs) },
+                  ]}
+                >
+                  {activeServer.latencyMs}ms
+                </Text>
                 <Ionicons
                   name="cellular"
                   size={16}
-                  color={colors.success}
+                  color={getPingColor(activeServer.latencyMs)}
                 />
                 <Ionicons
                   name={isServerListOpen ? 'chevron-up' : 'chevron-down'}
@@ -232,6 +383,7 @@ export function VpnScreen() {
               <View style={styles.serverList}>
                 {VPN_SERVERS.map((server) => {
                   const isSelected = server.id === activeServer.id;
+                  const pingColor = getPingColor(server.latencyMs);
                   return (
                     <Pressable
                       key={server.id}
@@ -254,7 +406,9 @@ export function VpnScreen() {
                           {server.city} • {server.loadPercent}% load
                         </Text>
                       </View>
-                      <Text style={styles.serverPing}>{server.latencyMs}ms</Text>
+                      <Text style={[styles.serverPing, { color: pingColor }]}>
+                        {server.latencyMs}ms
+                      </Text>
                       <Ionicons
                         name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                         size={18}
@@ -268,7 +422,7 @@ export function VpnScreen() {
           </GlassCard>
 
           <GlassCard contentStyle={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Tunnel Protocol</Text>
+            <Text style={styles.sectionTitle}>Tunnel & Protection</Text>
             <View style={styles.protocolRow}>
               {(['WireGuard', 'IKEv2'] as const).map((item) => {
                 const isSelected = protocol === item;
@@ -369,14 +523,56 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.huge + spacing.xxl,
     gap: spacing.md,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  securityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.glassBackgroundStrong,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  securityPillActive: {
+    backgroundColor: colors.successSurface,
+    borderColor: colors.success,
+  },
+  securityPillText: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  securityPillTextActive: {
+    color: colors.success,
+  },
   screenTitle: {
     ...typography.title,
+    color: colors.textPrimary,
+  },
+  fastestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+    borderWidth: 1,
+    borderColor: colors.accentBorder,
+  },
+  fastestBtnText: {
+    ...typography.small,
     color: colors.accent,
-    textAlign: 'center',
   },
   speedRow: {
     flexDirection: 'row',
@@ -400,6 +596,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  speedIconBoxActive: {
+    backgroundColor: colors.success,
+  },
   speedTextCol: {
     flex: 1,
   },
@@ -409,7 +608,7 @@ const styles = StyleSheet.create({
   },
   speedValue: {
     ...typography.bodyStrong,
-    color: colors.accent,
+    color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   ringsWrap: {
@@ -418,9 +617,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   dashedRingOuter: {
-    width: 244,
-    height: 244,
-    borderRadius: 122,
+    width: 236,
+    height: 236,
+    borderRadius: 118,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.accentBorder,
@@ -428,9 +627,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dashedRingMiddle: {
-    width: 206,
-    height: 206,
-    borderRadius: 103,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.accentBorder,
@@ -438,9 +637,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dashedRingInner: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
+    width: 164,
+    height: 164,
+    borderRadius: 82,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.accentBorder,
@@ -451,21 +650,24 @@ const styles = StyleSheet.create({
     borderColor: colors.success,
   },
   boltButton: {
-    width: 138,
-    height: 138,
-    borderRadius: 69,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 10,
   },
+  boltButtonConnected: {
+    shadowColor: colors.success,
+  },
   boltButtonPressed: {
     transform: [{ scale: 0.96 }],
   },
   boltGradient: {
     flex: 1,
-    borderRadius: 69,
+    borderRadius: 66,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,6 +678,7 @@ const styles = StyleSheet.create({
   timerCard: {
     alignItems: 'center',
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     gap: spacing.xs,
   },
   timerValue: {
@@ -506,6 +709,39 @@ const styles = StyleSheet.create({
   },
   statusTextConnected: {
     color: colors.success,
+  },
+  telemetryGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  telemetryItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  telemetryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.borderSubtle,
+  },
+  telemetryLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  telemetryValue: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  ipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   selectedServerCard: {
     padding: spacing.md,
@@ -577,7 +813,6 @@ const styles = StyleSheet.create({
   },
   serverPing: {
     ...typography.caption,
-    color: colors.accent,
     fontWeight: '600',
   },
   sectionCard: {
