@@ -87,7 +87,7 @@ export const BottomSheet = memo(function BottomSheet({
           ]}
         >
           {Platform.OS !== 'web' ? (
-            <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
           ) : null}
 
           <View style={styles.handleIndicator} />

@@ -24,7 +24,7 @@ export const GlassCard = memo(function GlassCard({
         {enableBlur && Platform.OS !== 'web' ? (
           <BlurView
             intensity={intensity}
-            tint="light"
+            tint="dark"
             style={StyleSheet.absoluteFill}
           />
         ) : null}

@@ -70,7 +70,7 @@ export const TabBar = memo(function TabBar({
     >
       <View style={styles.barContainer}>
         {Platform.OS !== 'web' ? (
-          <BlurView intensity={45} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
 
         <View style={styles.tabsRow}>
