@@ -187,13 +187,15 @@ export const TabBar = memo(function TabBar({
       <View style={styles.pillShell}>
         <LinearGradient
           colors={[
-            'rgba(255, 255, 255, 0.34)',
+            'rgba(255, 255, 255, 0.52)',
+            'rgba(255, 255, 255, 0.16)',
+            'rgba(255, 255, 255, 0.03)',
             'rgba(255, 255, 255, 0.08)',
-            'rgba(255, 255, 255, 0.18)',
+            'rgba(255, 255, 255, 0.28)',
           ]}
-          locations={[0, 0.52, 1]}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.85, y: 1 }}
+          locations={[0, 0.14, 0.5, 0.86, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
           style={styles.pillRim}
         >
           <View
@@ -320,13 +322,15 @@ const styles = StyleSheet.create({
   },
   pillRim: {
     borderRadius: radius.pill,
-    padding: 1,
+    padding: 1.25,
   },
   barContainer: {
     width: '100%',
     height: 60,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBar,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.35)',
     overflow: 'hidden',
   },
   tabsRow: {
