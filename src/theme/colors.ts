@@ -1,8 +1,8 @@
 export const colors = {
-  background: '#0A0B0E',
-  blobPrimary: 'rgba(45, 212, 191, 0.16)',
-  blobSecondary: 'rgba(56, 189, 248, 0.18)',
-  blobTertiary: 'rgba(255, 255, 255, 0.05)',
+  background: '#050506',
+  blobPrimary: 'rgba(180, 185, 194, 0.24)',
+  blobSecondary: 'rgba(220, 224, 232, 0.18)',
+  blobTertiary: 'rgba(110, 114, 122, 0.16)',
 
   glassBackground: 'rgba(24, 26, 31, 0.74)',
   glassBackgroundStrong: 'rgba(28, 30, 36, 0.88)',

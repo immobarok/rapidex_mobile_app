@@ -12,22 +12,29 @@ export const BackgroundBlobs = memo(function BackgroundBlobs({ children }: Props
     <View style={styles.root}>
       <View style={styles.blobContainer} pointerEvents="none">
         <LinearGradient
-          colors={[colors.blobSecondary, colors.blobPrimary, colors.background]}
-          start={{ x: 0.1, y: 0.1 }}
-          end={{ x: 0.9, y: 0.9 }}
-          style={styles.topRightBlob}
+          colors={['#1E2024', '#0A0B0D', '#030304']}
+          locations={[0, 0.42, 1]}
+          start={{ x: 0.45, y: 0 }}
+          end={{ x: 0.55, y: 1 }}
+          style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={[colors.blobPrimary, colors.blobTertiary, colors.background]}
-          start={{ x: 0.2, y: 0.2 }}
-          end={{ x: 0.8, y: 0.9 }}
-          style={styles.midLeftBlob}
+          colors={[colors.blobSecondary, colors.blobPrimary, 'transparent']}
+          start={{ x: 0.35, y: 0 }}
+          end={{ x: 0.85, y: 0.75 }}
+          style={styles.topSweep}
         />
         <LinearGradient
-          colors={[colors.blobSecondary, colors.blobPrimary, colors.background]}
-          start={{ x: 0.5, y: 0.1 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.bottomRightBlob}
+          colors={[colors.blobTertiary, 'rgba(60, 64, 70, 0.08)', 'transparent']}
+          start={{ x: 0, y: 0.6 }}
+          end={{ x: 0.85, y: 0.2 }}
+          style={styles.bottomLeftMist}
+        />
+        <LinearGradient
+          colors={['rgba(195, 200, 210, 0.20)', 'rgba(90, 94, 102, 0.08)', 'transparent']}
+          start={{ x: 0.9, y: 0.95 }}
+          end={{ x: 0.2, y: 0.2 }}
+          style={styles.bottomRightSweep}
         />
       </View>
       {children}
@@ -44,31 +51,30 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
-  topRightBlob: {
+  topSweep: {
     position: 'absolute',
-    top: -90,
-    right: -80,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    opacity: 0.85,
+    top: -120,
+    left: '8%',
+    width: 340,
+    height: 360,
+    borderRadius: 180,
+    transform: [{ rotate: '-22deg' }, { scaleX: 1.25 }],
   },
-  midLeftBlob: {
+  bottomLeftMist: {
     position: 'absolute',
-    top: '34%',
-    left: -110,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    opacity: 0.75,
+    bottom: -100,
+    left: -130,
+    width: 320,
+    height: 380,
+    borderRadius: 190,
   },
-  bottomRightBlob: {
+  bottomRightSweep: {
     position: 'absolute',
-    bottom: -70,
-    right: -60,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    opacity: 0.7,
+    bottom: -110,
+    right: -110,
+    width: 340,
+    height: 380,
+    borderRadius: 190,
+    transform: [{ rotate: '-28deg' }],
   },
 });
