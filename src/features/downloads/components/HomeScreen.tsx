@@ -25,6 +25,11 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
+import {
+  QUICK_APPS,
+  resolveSearchOrUrl,
+  useBrowserStore,
+} from '@/features/browser/store';
 import { DownloadCard } from './DownloadCard';
 
 export function HomeScreen() {
@@ -45,6 +50,7 @@ export function HomeScreen() {
   } = useDownloads();
 
   const stats = useAggregateDownloadStats();
+  const openBrowserSheet = useBrowserStore((s) => s.openBrowserSheet);
   const [quickUrl, setQuickUrl] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
@@ -115,6 +121,24 @@ export function HomeScreen() {
     setInputError(null);
     openAddSheet(check.normalizedUrl);
     setQuickUrl('');
+  };
+
+  const handleBrowseInput = () => {
+    const trimmed = quickUrl.trim();
+    if (!trimmed) {
+      setInputError('Enter a search query or website URL.');
+      return;
+    }
+    triggerHaptic('selection');
+    setInputError(null);
+    const targetUrl = resolveSearchOrUrl(trimmed);
+    setQuickUrl('');
+    router.push({ pathname: '/browser', params: { url: targetUrl } });
+  };
+
+  const handleOpenApp = (url: string) => {
+    triggerHaptic('selection');
+    router.push({ pathname: '/browser', params: { url } });
   };
 
   const handleOpenItem = (item: DownloadItemRecord) => {
@@ -222,9 +246,9 @@ export function HomeScreen() {
         ) : null}
 
         <GlassCard enableBlur intensity={42} contentStyle={styles.heroCard}>
-          <Text style={styles.cardHeading}>Paste Direct File Link</Text>
+          <Text style={styles.cardHeading}>Search, Browse or Paste Direct Link</Text>
           <View style={styles.inputWrap}>
-            <Ionicons name="globe-outline" size={20} color={colors.textSecondary} />
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
             <TextInput
               value={quickUrl}
               onChangeText={(val) => {
@@ -233,13 +257,15 @@ export function HomeScreen() {
                   setInputError(null);
                 }
               }}
-              placeholder="https://example.com/file.mp4"
+              placeholder="Search Google or enter URL..."
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="url"
+              keyboardType="web-search"
+              returnKeyType="go"
+              onSubmitEditing={handleBrowseInput}
               style={styles.urlInput}
-              accessibilityLabel="Paste direct file URL"
+              accessibilityLabel="Search Google or enter URL"
             />
             {quickUrl.length > 0 ? (
               <Pressable
@@ -264,6 +290,13 @@ export function HomeScreen() {
               style={styles.pasteBtn}
             />
             <OrangeButton
+              label="Browse"
+              variant="secondary"
+              onPress={handleBrowseInput}
+              icon={<Ionicons name="compass-outline" size={18} color={colors.accent} />}
+              style={styles.pasteBtn}
+            />
+            <OrangeButton
               label="Download"
               onPress={handlePressDownload}
               icon={
@@ -275,6 +308,57 @@ export function HomeScreen() {
               }
               style={styles.downloadBtn}
             />
+          </View>
+        </GlassCard>
+
+        <GlassCard contentStyle={styles.appsCard}>
+          <View style={styles.appsHeader}>
+            <Text style={styles.cardHeading}>Quick Apps</Text>
+            <View style={styles.browserPills}>
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('selection');
+                  openBrowserSheet('history');
+                }}
+                style={styles.browserPill}
+                accessibilityRole="button"
+                accessibilityLabel="Open browsing history"
+              >
+                <Ionicons name="time-outline" size={15} color={colors.accent} />
+                <Text style={styles.browserPillText}>History</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('selection');
+                  openBrowserSheet('bookmarks');
+                }}
+                style={styles.browserPill}
+                accessibilityRole="button"
+                accessibilityLabel="Open bookmarks"
+              >
+                <Ionicons name="bookmark-outline" size={15} color={colors.accent} />
+                <Text style={styles.browserPillText}>Bookmarks</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.appsGrid}>
+            {QUICK_APPS.map((app) => (
+              <Pressable
+                key={app.id}
+                onPress={() => handleOpenApp(app.url)}
+                style={styles.appTile}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${app.name} in browser`}
+              >
+                <View style={styles.appIconCircle}>
+                  <Ionicons name={app.icon} size={24} color={app.tintColor} />
+                </View>
+                <Text style={styles.appName} numberOfLines={1}>
+                  {app.name}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </GlassCard>
 
@@ -491,7 +575,64 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   downloadBtn: {
-    flex: 2,
+    flex: 1.4,
+  },
+  appsCard: {
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  appsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  browserPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  browserPill: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+    borderWidth: 1,
+    borderColor: colors.accentBorder,
+  },
+  browserPillText: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  appsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  appTile: {
+    flex: 1,
+    minHeight: spacing.touchMin,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  appIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: radius.lg,
+    backgroundColor: colors.glassBackgroundStrong,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appName: {
+    ...typography.small,
+    color: colors.textPrimary,
+    textAlign: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
