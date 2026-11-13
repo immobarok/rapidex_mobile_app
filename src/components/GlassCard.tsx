@@ -12,33 +12,64 @@ type Props = {
   enableBlur?: boolean;
 };
 
+const webGlassStyle =
+  Platform.OS === 'web'
+    ? ({
+        backdropFilter: 'blur(24px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+      } as unknown as ViewStyle)
+    : undefined;
+
 export const GlassCard = memo(function GlassCard({
   children,
   style,
   contentStyle,
-  intensity = 54,
-  enableBlur = false,
+  intensity = 45,
+  enableBlur = true,
 }: Props) {
   return (
     <View style={[styles.outerShadow, style]}>
-      <View style={styles.card}>
-        {enableBlur && Platform.OS !== 'web' ? (
-          <BlurView
-            intensity={intensity}
-            tint="dark"
+      <LinearGradient
+        colors={[
+          'rgba(255, 255, 255, 0.34)',
+          'rgba(255, 255, 255, 0.08)',
+          'rgba(255, 255, 255, 0.18)',
+        ]}
+        locations={[0, 0.52, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={styles.rimGradient}
+      >
+        <View style={[styles.card, webGlassStyle]}>
+          {enableBlur && Platform.OS !== 'web' ? (
+            <BlurView
+              intensity={intensity}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+          <LinearGradient
+            colors={[
+              'rgba(44, 46, 52, 0.52)',
+              'rgba(22, 23, 27, 0.62)',
+              'rgba(14, 15, 18, 0.68)',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
-        ) : null}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.07)', 'rgba(255, 255, 255, 0.01)', 'transparent']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.65 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        <View style={styles.topSpecular} pointerEvents="none" />
-        <View style={[styles.content, contentStyle]}>{children}</View>
-      </View>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.08)', 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 0.45 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View style={[styles.content, contentStyle]}>{children}</View>
+        </View>
+      </LinearGradient>
     </View>
   );
 });
@@ -47,26 +78,19 @@ const styles = StyleSheet.create({
   outerShadow: {
     borderRadius: radius.xl,
     shadowColor: colors.shadowDark,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.45,
-    shadowRadius: 22,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.55,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  rimGradient: {
+    borderRadius: radius.xl,
+    padding: 1,
   },
   card: {
-    borderRadius: radius.xl,
-    backgroundColor: colors.glassBackground,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderRadius: radius.xl - 1,
+    backgroundColor: 'rgba(20, 21, 24, 0.48)',
     overflow: 'hidden',
-  },
-  topSpecular: {
-    position: 'absolute',
-    top: 0,
-    left: spacing.md,
-    right: spacing.md,
-    height: 1,
-    backgroundColor: colors.glassHighlight,
-    opacity: 0.65,
   },
   content: {
     padding: spacing.md,

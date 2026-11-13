@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ViewStyle,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -184,25 +185,52 @@ export const TabBar = memo(function TabBar({
       pointerEvents="box-none"
     >
       <View style={styles.pillShell}>
-        <View style={styles.barContainer}>
-          {Platform.OS !== 'web' ? (
-            <BlurView
-              intensity={56}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null}
-          <LinearGradient
-            colors={[
-              'rgba(255, 255, 255, 0.08)',
-              'rgba(255, 255, 255, 0.01)',
-              'transparent',
+        <LinearGradient
+          colors={[
+            'rgba(255, 255, 255, 0.34)',
+            'rgba(255, 255, 255, 0.08)',
+            'rgba(255, 255, 255, 0.18)',
+          ]}
+          locations={[0, 0.52, 1]}
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0.85, y: 1 }}
+          style={styles.pillRim}
+        >
+          <View
+            style={[
+              styles.barContainer,
+              Platform.OS === 'web'
+                ? ({
+                    backdropFilter: 'blur(24px) saturate(140%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                  } as unknown as ViewStyle)
+                : undefined,
             ]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 0.7 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
+          >
+            {Platform.OS !== 'web' ? (
+              <BlurView
+                intensity={56}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
+            <LinearGradient
+              colors={[
+                'rgba(44, 46, 52, 0.45)',
+                'rgba(20, 21, 25, 0.55)',
+              ]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.08)', 'transparent']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 0.55 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
 
           <View style={styles.tabsRow}>
             {state.routes.map((route, index) => {
@@ -270,7 +298,8 @@ export const TabBar = memo(function TabBar({
               );
             })}
           </View>
-        </View>
+          </View>
+        </LinearGradient>
       </View>
     </View>
   );
@@ -289,13 +318,15 @@ const styles = StyleSheet.create({
     maxWidth: 326,
     borderRadius: radius.pill,
   },
+  pillRim: {
+    borderRadius: radius.pill,
+    padding: 1,
+  },
   barContainer: {
     width: '100%',
-    height: 62,
+    height: 60,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBar,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
     overflow: 'hidden',
   },
   tabsRow: {
