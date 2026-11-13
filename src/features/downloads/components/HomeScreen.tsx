@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   AppState,
   Platform,
   Pressable,
@@ -18,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/GlassCard';
-import { SkeletonList } from '@/components/Skeleton';
+import { Skeleton, SkeletonList } from '@/components/Skeleton';
 import { triggerHaptic } from '@/lib/haptics';
 import { validateDirectUrl } from '@/lib/validateUrl';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -523,10 +522,15 @@ export function HomeScreen() {
             </Pressable>
           </View>
 
-          {isLoadingNews && filteredArticles.length === 0 ? (
-            <View style={styles.newsLoadingBox}>
-              <ActivityIndicator size="small" color={colors.accent} />
-              <Text style={styles.newsLoadingText}>Loading live stories...</Text>
+          {isLoadingNews ? (
+            <View style={styles.newsSkeletonWrap}>
+              {[0, 1].map((idx) => (
+                <View key={`news-sk-${idx}`} style={styles.articleCard}>
+                  <Skeleton height={170} borderRadius={radius.md} />
+                  <Skeleton height={16} width="90%" borderRadius={radius.xs} />
+                  <Skeleton height={12} width="45%" borderRadius={radius.xs} />
+                </View>
+              ))}
             </View>
           ) : (
             filteredArticles.map((article) => (
@@ -947,16 +951,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  newsLoadingBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.lg,
-  },
-  newsLoadingText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  newsSkeletonWrap: {
+    gap: spacing.sm,
   },
   discoverTabs: {
     gap: spacing.xs,
