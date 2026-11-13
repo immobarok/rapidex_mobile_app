@@ -142,21 +142,32 @@ export const TabBar = memo(function TabBar({
             accessibilityState={{ selected: isVpnFocused }}
             style={({ pressed }) => [styles.fabButton, pressed && styles.fabPressed]}
           >
-            <LinearGradient
-              colors={
-                isVpnConnected
-                  ? [colors.success, '#22C55E']
-                  : [colors.accent, colors.accentLight]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={[
-                styles.fabGradient,
-                isVpnFocused && styles.fabFocusedRing,
+                styles.fabHalo,
+                isVpnConnected && styles.fabHaloConnected,
+                isVpnFocused && styles.fabHaloFocused,
               ]}
             >
-              <Ionicons name="flash" size={26} color={colors.textOnAccent} />
-            </LinearGradient>
+              <View style={styles.fabCircle}>
+                <LinearGradient
+                  colors={
+                    isVpnConnected
+                      ? [colors.success, '#22C55E']
+                      : [colors.accent, colors.accentLight]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.fabGradient}
+                >
+                  <Ionicons
+                    name={isVpnConnected ? 'shield-checkmark' : 'flash'}
+                    size={24}
+                    color={colors.textOnAccent}
+                  />
+                </LinearGradient>
+              </View>
+            </View>
             <Text
               style={[
                 styles.centerLabel,
@@ -236,30 +247,41 @@ const styles = StyleSheet.create({
   },
   fabButton: {
     position: 'absolute',
-    top: -18,
+    top: -20,
     alignItems: 'center',
+  },
+  fabHalo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    padding: 3,
+    backgroundColor: colors.background,
     shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
     elevation: 10,
   },
-  fabFocusedRing: {
-    borderWidth: 2.5,
-    borderColor: colors.background,
+  fabHaloConnected: {
+    shadowColor: colors.success,
+  },
+  fabHaloFocused: {
+    borderWidth: 1.5,
+    borderColor: colors.accentBorder,
+  },
+  fabCircle: {
+    flex: 1,
+    borderRadius: 27,
+    overflow: 'hidden',
   },
   centerLabel: {
     ...typography.small,
     marginTop: 2,
   },
   fabGradient: {
-    width: spacing.fabSize,
-    height: spacing.fabSize,
-    borderRadius: spacing.fabSize / 2,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
   },
   fabPressed: {
     transform: [{ scale: 0.94 }],
