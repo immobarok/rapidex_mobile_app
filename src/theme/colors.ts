@@ -4,9 +4,9 @@ export const colors = {
   blobSecondary: 'rgba(220, 224, 232, 0.18)',
   blobTertiary: 'rgba(110, 114, 122, 0.16)',
 
-  glassBackground: 'rgba(20, 22, 27, 0.42)',
-  glassBackgroundStrong: 'rgba(20, 22, 27, 0.58)',
-  glassBar: 'rgba(20, 22, 27, 0.42)',
+  glassBackground: 'rgba(20, 22, 27, 0.58)',
+  glassBackgroundStrong: 'rgba(20, 22, 27, 0.72)',
+  glassBar: 'rgba(20, 22, 27, 0.60)',
   glassBorder: 'rgba(255, 255, 255, 0.16)',
   glassBorderSubtle: 'rgba(255, 255, 255, 0.08)',
   glassHighlight: 'rgba(255, 255, 255, 0.24)',
