@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/GlassCard';
-import { OrangeButton } from '@/components/OrangeButton';
 import { SkeletonList } from '@/components/Skeleton';
 import { formatBytes } from '@/lib/formatBytes';
 import { formatSpeed } from '@/lib/formatSpeed';
@@ -123,17 +122,6 @@ export function HomeScreen() {
     } catch {
       setInputError('Unable to read clipboard.');
     }
-  };
-
-  const handlePressDownload = () => {
-    const check = validateDirectUrl(quickUrl);
-    if (!check.isValid) {
-      setInputError(check.errorMessage);
-      return;
-    }
-    setInputError(null);
-    openAddSheet(check.normalizedUrl);
-    setQuickUrl('');
   };
 
   const handleBrowseInput = () => {
@@ -356,28 +344,6 @@ export function HomeScreen() {
           </View>
 
           {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
-
-          <View style={styles.heroActions}>
-            <OrangeButton
-              label="Browse"
-              variant="secondary"
-              onPress={handleBrowseInput}
-              icon={<Ionicons name="compass-outline" size={18} color={colors.accent} />}
-              style={styles.pasteBtn}
-            />
-            <OrangeButton
-              label="Download"
-              onPress={handlePressDownload}
-              icon={
-                <Ionicons
-                  name="arrow-down-circle-outline"
-                  size={18}
-                  color={colors.textOnAccent}
-                />
-              }
-              style={styles.downloadBtn}
-            />
-          </View>
         </GlassCard>
 
         <GlassCard contentStyle={styles.appsCard}>
@@ -756,8 +722,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroCard: {
-    padding: spacing.lg,
-    gap: spacing.md,
+    padding: spacing.sm,
+    gap: spacing.xs,
   },
   cardHeading: {
     ...typography.subtitle,
