@@ -33,7 +33,6 @@ import {
 } from '@/features/browser/store';
 import { fetchLiveDiscoverNews } from '@/features/browser/services/newsService';
 import { DiscoverArticle, DiscoverCategory } from '@/features/browser/types';
-import { useVpnStore } from '@/features/vpn/store';
 import { DownloadCard } from './DownloadCard';
 
 export function HomeScreen() {
@@ -57,7 +56,6 @@ export function HomeScreen() {
   const customShortcuts = useBrowserStore((s) => s.customShortcuts);
   const addCustomShortcut = useBrowserStore((s) => s.addCustomShortcut);
   const removeCustomShortcut = useBrowserStore((s) => s.removeCustomShortcut);
-  const vpnStatus = useVpnStore((s) => s.status);
 
   const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [quickUrl, setQuickUrl] = useState('');
@@ -260,46 +258,6 @@ export function HomeScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brandSubtitle}>PROXY BROWSER & DOWNLOADER</Text>
-            <Text style={styles.title}>rapidex</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => router.push('/(tabs)/vpn')}
-              accessibilityRole="button"
-              accessibilityLabel="Open VPN settings"
-              style={[
-                styles.vpnStatusPill,
-                vpnStatus === 'connected' && styles.vpnStatusPillActive,
-              ]}
-            >
-              <Ionicons
-                name={vpnStatus === 'connected' ? 'shield-checkmark' : 'shield-outline'}
-                size={15}
-                color={vpnStatus === 'connected' ? colors.success : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.vpnStatusText,
-                  vpnStatus === 'connected' && styles.vpnStatusTextActive,
-                ]}
-              >
-                {vpnStatus === 'connected' ? 'VPN On' : 'VPN'}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => openAddSheet()}
-              accessibilityRole="button"
-              accessibilityLabel="Open add link sheet"
-              style={styles.headerAction}
-            >
-              <Ionicons name="add" size={24} color={colors.accent} />
-            </Pressable>
-          </View>
-        </View>
-
         {clipboardSuggestion ? (
           <GlassCard contentStyle={styles.clipboardBanner}>
             <View style={styles.clipboardIconWrap}>
@@ -610,8 +568,18 @@ export function HomeScreen() {
         ) : (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Transfers</Text>
-              <Text style={styles.sectionCount}>{activeItems.length}</Text>
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>Active Transfers</Text>
+                <Text style={styles.sectionCount}>{activeItems.length}</Text>
+              </View>
+              <Pressable
+                onPress={() => openAddSheet()}
+                accessibilityRole="button"
+                accessibilityLabel="Open add link sheet"
+                style={styles.headerAction}
+              >
+                <Ionicons name="add" size={22} color={colors.accent} />
+              </Pressable>
             </View>
 
             {activeItems.length === 0 ? (
@@ -1047,6 +1015,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.xs,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   sectionTitle: {
     ...typography.title,
