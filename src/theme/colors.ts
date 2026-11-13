@@ -6,6 +6,7 @@ export const colors = {
 
   glassBackground: 'rgba(24, 26, 31, 0.74)',
   glassBackgroundStrong: 'rgba(28, 30, 36, 0.88)',
+  glassBar: 'rgba(20, 22, 27, 0.45)',
   glassBorder: 'rgba(255, 255, 255, 0.15)',
   glassBorderSubtle: 'rgba(255, 255, 255, 0.08)',
   glassHighlight: 'rgba(255, 255, 255, 0.22)',

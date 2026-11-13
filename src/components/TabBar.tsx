@@ -187,7 +187,7 @@ export const TabBar = memo(function TabBar({
         <View style={styles.barContainer}>
           {Platform.OS !== 'web' ? (
             <BlurView
-              intensity={48}
+              intensity={56}
               tint="dark"
               style={StyleSheet.absoluteFill}
             />
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 62,
     borderRadius: radius.pill,
-    backgroundColor: colors.glassBackgroundStrong,
+    backgroundColor: colors.glassBar,
     borderWidth: 1,
     borderColor: colors.glassBorder,
     overflow: 'hidden',
