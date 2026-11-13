@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppState,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -55,8 +56,11 @@ export function HomeScreen() {
   const removeCustomShortcut = useBrowserStore((s) => s.removeCustomShortcut);
   const vpnStatus = useVpnStore((s) => s.status);
 
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [quickUrl, setQuickUrl] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
+  const [voiceHint, setVoiceHint] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
   const [selectedDiscover, setSelectedDiscover] = useState<DiscoverCategory>('For you');
   const [isAddingShortcut, setIsAddingShortcut] = useState(false);
@@ -105,19 +109,62 @@ export function HomeScreen() {
     [items]
   );
 
-  const handlePasteClipboard = async () => {
+  const handleVoiceSearch = () => {
     triggerHaptic('selection');
-    try {
-      const text = await Clipboard.getStringAsync();
-      if (!text.trim()) {
-        setInputError('Clipboard is empty. Copy a direct file link first.');
+    setInputError(null);
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      type WebSpeechEvent = {
+        results?: ArrayLike<ArrayLike<{ transcript?: string }>>;
+      };
+      type WebSpeechRecognition = {
+        lang: string;
+        interimResults: boolean;
+        maxAlternatives: number;
+        onresult: ((event: WebSpeechEvent) => void) | null;
+        onerror: (() => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      };
+      type SpeechCtor = new () => WebSpeechRecognition;
+      const win = window as unknown as {
+        SpeechRecognition?: SpeechCtor;
+        webkitSpeechRecognition?: SpeechCtor;
+      };
+      const Recognition = win.SpeechRecognition ?? win.webkitSpeechRecognition;
+
+      if (Recognition) {
+        const recognition = new Recognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        setIsListening(true);
+        setVoiceHint('Listening... Speak your search query');
+
+        recognition.onresult = (event) => {
+          const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? '';
+          setIsListening(false);
+          setVoiceHint(null);
+          if (transcript) {
+            setQuickUrl(transcript);
+            const targetUrl = resolveSearchOrUrl(transcript);
+            router.push({ pathname: '/browser', params: { url: targetUrl } });
+          }
+        };
+        recognition.onerror = () => {
+          setIsListening(false);
+          setVoiceHint('Could not hear clearly. Try typing or speaking again.');
+        };
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+        recognition.start();
         return;
       }
-      setQuickUrl(text.trim());
-      setInputError(null);
-    } catch {
-      setInputError('Unable to read clipboard.');
     }
+
+    inputRef.current?.focus();
+    setVoiceHint('Tap the microphone on your keyboard to speak a search.');
   };
 
   const handleBrowseInput = () => {
@@ -280,11 +327,15 @@ export function HomeScreen() {
               <Ionicons name="search" size={18} color={colors.textOnAccent} />
             </Pressable>
             <TextInput
+              ref={inputRef}
               value={quickUrl}
               onChangeText={(val) => {
                 setQuickUrl(val);
                 if (inputError) {
                   setInputError(null);
+                }
+                if (voiceHint) {
+                  setVoiceHint(null);
                 }
               }}
               placeholder="Search or Paste URL"
@@ -306,18 +357,23 @@ export function HomeScreen() {
               >
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </Pressable>
-            ) : (
-              <Pressable
-                onPress={handlePasteClipboard}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Paste from clipboard"
-              >
-                <Ionicons name="clipboard-outline" size={18} color={colors.accent} />
-              </Pressable>
-            )}
+            ) : null}
+            <Pressable
+              onPress={handleVoiceSearch}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Voice search"
+              style={styles.micButton}
+            >
+              <Ionicons
+                name={isListening ? 'mic' : 'mic-outline'}
+                size={20}
+                color={isListening ? colors.accent : colors.textSecondary}
+              />
+            </Pressable>
           </View>
 
+          {voiceHint ? <Text style={styles.voiceHintText}>{voiceHint}</Text> : null}
           {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
         </GlassCard>
 
@@ -733,6 +789,17 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.caption,
     color: colors.danger,
+  },
+  micButton: {
+    minWidth: 32,
+    minHeight: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceHintText: {
+    ...typography.caption,
+    color: colors.accent,
+    paddingHorizontal: spacing.xs,
   },
   heroActions: {
     flexDirection: 'row',
