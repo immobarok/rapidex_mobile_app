@@ -218,8 +218,8 @@ export const TabBar = memo(function TabBar({
             ) : null}
             <LinearGradient
               colors={[
-                'rgba(44, 46, 52, 0.58)',
-                'rgba(20, 21, 25, 0.68)',
+                'rgba(255, 255, 255, 0.10)',
+                'rgba(0, 0, 0, 0.18)',
               ]}
               start={{ x: 0.2, y: 0 }}
               end={{ x: 0.8, y: 1 }}
