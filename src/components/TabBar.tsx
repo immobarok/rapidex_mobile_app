@@ -1,6 +1,5 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect } from 'react';
 import {
-  LayoutChangeEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,7 +14,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -147,63 +145,22 @@ export const TabBar = memo(function TabBar({
   const vpnStatus = useVpnStore((s) => s.status);
   const isVpnConnected = vpnStatus === 'connected';
 
-  const [rowWidth, setRowWidth] = useState(0);
-  const indicatorX = useSharedValue(0);
-  const indicatorScale = useSharedValue(1);
   const centerScale = useSharedValue(1);
 
-  const visibleRoutes = state.routes.filter((r) => Boolean(TAB_CONFIG[r.name]));
-  const totalTabs = visibleRoutes.length || 5;
   const activeRoute = state.routes[state.index];
   const isVpnActive = activeRoute?.name === 'vpn';
 
-  const handleRowLayout = (event: LayoutChangeEvent) => {
-    setRowWidth(event.nativeEvent.layout.width);
-  };
-
   useEffect(() => {
-    if (rowWidth <= 0) return;
-    const innerWidth = rowWidth - spacing.sm * 2;
-    const slotWidth = innerWidth / totalTabs;
-    const targetX = spacing.sm + state.index * slotWidth + (slotWidth - 18) / 2;
-
     if (reduceMotion) {
-      indicatorX.value = withTiming(targetX, { duration: 120 });
       centerScale.value = isVpnActive ? 1.05 : 1;
       return;
     }
 
-    indicatorX.value = withSpring(targetX, {
-      damping: 16,
-      stiffness: 210,
-      mass: 0.75,
-    });
-    indicatorScale.value = withSequence(
-      withSpring(1.16, { damping: 12, stiffness: 260 }),
-      withSpring(1, { damping: 14, stiffness: 200 }),
-    );
     centerScale.value = withSpring(isVpnActive ? 1.07 : 1, {
       damping: 13,
       stiffness: 220,
     });
-  }, [
-    centerScale,
-    indicatorScale,
-    indicatorX,
-    isVpnActive,
-    reduceMotion,
-    rowWidth,
-    state.index,
-    totalTabs,
-  ]);
-
-  const indicatorStyle = useAnimatedStyle(() => ({
-    opacity: rowWidth > 0 && !isVpnActive ? 1 : 0,
-    transform: [
-      { translateX: indicatorX.value },
-      { scale: indicatorScale.value },
-    ],
-  }));
+  }, [centerScale, isVpnActive, reduceMotion]);
 
   const centerAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: centerScale.value }],
@@ -247,12 +204,7 @@ export const TabBar = memo(function TabBar({
             pointerEvents="none"
           />
 
-          <View style={styles.tabsRow} onLayout={handleRowLayout}>
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.slidingGlowPill, indicatorStyle]}
-            />
-
+          <View style={styles.tabsRow}>
             {state.routes.map((route, index) => {
               const config = TAB_CONFIG[route.name];
               if (!config) {
@@ -356,19 +308,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
-  },
-  slidingGlowPill: {
-    position: 'absolute',
-    left: 0,
-    bottom: 7,
-    width: 18,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.75,
-    shadowRadius: 8,
   },
   tabItem: {
     flex: 1,
