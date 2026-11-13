@@ -8,6 +8,7 @@ export type NewDownloadPayload = {
   folder: string;
   totalBytes: number;
   mimeType: string;
+  headers?: Record<string, string>;
 };
 
 export type DownloadsStoreState = {
@@ -23,6 +24,7 @@ export type DownloadsStoreState = {
   updateItemFields: (id: string, patch: Partial<DownloadItemRecord>) => void;
   removeItem: (id: string) => void;
   removeCompletedItems: () => void;
+  removeFailedItems: () => void;
   setProgressSnapshot: (id: string, snapshot: ActiveProgressSnapshot) => void;
   clearProgressSnapshot: (id: string) => void;
   openAddSheet: (prefillUrl?: string) => void;

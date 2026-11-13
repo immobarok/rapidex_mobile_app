@@ -48,6 +48,11 @@ export const useDownloadsStore = create<DownloadsStoreState>((set) => ({
       items: state.items.filter((item) => item.status !== 'completed'),
     })),
 
+  removeFailedItems: () =>
+    set((state) => ({
+      items: state.items.filter((item) => item.status !== 'failed'),
+    })),
+
   setProgressSnapshot: (id, snapshot) =>
     set((state) => ({
       progressById: {

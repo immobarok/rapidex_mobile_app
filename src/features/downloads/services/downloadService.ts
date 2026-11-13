@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import {
   deleteCompletedDownloadsFromDb,
   deleteDownloadFromDb,
+  deleteFailedDownloadsFromDb,
   fetchAllDownloadsFromDb,
   upsertDownloadInDb,
 } from '@/lib/db';
@@ -14,14 +15,16 @@ import {
   sanitizeFileName,
   sanitizeFolderName,
 } from '@/lib/fileType';
+import { triggerHaptic } from '@/lib/haptics';
 import { logError } from '@/lib/logger';
 import { useSettingsStore } from '@/features/settings/store';
-import { DownloadItemRecord } from '@/types';
+import { SaveFolderOption } from '@/features/settings/types';
+import { DownloadItemRecord, FileCategory } from '@/types';
 import { useDownloadsStore } from '../store';
 import { NewDownloadPayload } from '../types';
 
 const PROGRESS_THROTTLE_MS = 250;
-const MIN_FREE_DISK_BYTES = 25 * 1024 * 1024; // 25 MB safety margin
+const MIN_FREE_DISK_BYTES = 25 * 1024 * 1024;
 
 type TaskMeta = {
   resumable: FileSystem.DownloadResumable;
@@ -33,6 +36,16 @@ type TaskMeta = {
 
 const activeTasks = new Map<string, TaskMeta>();
 let isInitializing = false;
+
+export function resolveSmartFolder(
+  category: FileCategory,
+  fallbackFolder: SaveFolderOption
+): SaveFolderOption {
+  if (category === 'video') return 'Videos';
+  if (category === 'audio') return 'Music';
+  if (category === 'document') return 'Documents';
+  return fallbackFolder;
+}
 
 function getBaseDirectory(): string {
   return FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '';
@@ -52,10 +65,26 @@ async function ensureFolderExists(folder: string): Promise<string> {
   return dirUri;
 }
 
-async function buildSafeLocalUri(folder: string, fileName: string, id: string): Promise<string> {
+async function buildSafeLocalUri(
+  folder: string,
+  fileName: string,
+  id: string
+): Promise<string> {
   const dirUri = await ensureFolderExists(folder);
   const cleanName = sanitizeFileName(fileName);
   return `${dirUri}${id}_${cleanName}`;
+}
+
+function parseHeaders(headersJson?: string | null): Record<string, string> | undefined {
+  if (!headersJson) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(headersJson) as Record<string, string>;
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function verifyNetworkAllowsDownload(): Promise<{ allowed: boolean; reason?: string }> {
@@ -122,7 +151,6 @@ export async function hydrateDownloadsAndRecoverQueue(): Promise<void> {
 
     for (const item of records) {
       if (item.status === 'downloading') {
-        // Recover interrupted downloads as queued or paused with resumeData
         const recovered: DownloadItemRecord = {
           ...item,
           status: 'queued',
@@ -160,6 +188,10 @@ export async function enqueueNewDownload(payload: NewDownloadPayload): Promise<s
   const localUri = await buildSafeLocalUri(safeFolder, cleanName, id);
   const mimeType = inferMimeType(cleanName, payload.mimeType);
   const category = detectFileCategory(cleanName, mimeType);
+  const headersJson =
+    payload.headers && Object.keys(payload.headers).length > 0
+      ? JSON.stringify(payload.headers)
+      : null;
 
   const record: DownloadItemRecord = {
     id,
@@ -174,6 +206,7 @@ export async function enqueueNewDownload(payload: NewDownloadPayload): Promise<s
     status: 'queued',
     errorMessage: null,
     resumeData: null,
+    headersJson,
     createdAt: Date.now(),
     completedAt: null,
     lastPlaybackPositionMs: 0,
@@ -285,7 +318,10 @@ async function startDownloadTask(item: DownloadItemRecord): Promise<void> {
   const resumable = FileSystem.createDownloadResumable(
     item.url,
     item.localUri,
-    { sessionType: FileSystem.FileSystemSessionType.BACKGROUND },
+    {
+      sessionType: FileSystem.FileSystemSessionType.BACKGROUND,
+      headers: parseHeaders(item.headersJson),
+    },
     onProgress,
     item.resumeData ?? undefined
   );
@@ -352,6 +388,7 @@ async function startDownloadTask(item: DownloadItemRecord): Promise<void> {
 
     useDownloadsStore.getState().upsertItem(completedRecord);
     await upsertDownloadInDb(completedRecord);
+    triggerHaptic('success');
     await notifyDownloadComplete(completedRecord.fileName);
     await processDownloadQueue();
   } catch (err) {
@@ -407,6 +444,16 @@ export async function pauseDownload(id: string): Promise<void> {
   await processDownloadQueue();
 }
 
+export async function pauseAllDownloads(): Promise<void> {
+  const items = useDownloadsStore.getState().items;
+  const targets = items.filter(
+    (i) => i.status === 'downloading' || i.status === 'queued'
+  );
+  for (const item of targets) {
+    await pauseDownload(item.id);
+  }
+}
+
 export async function resumeDownload(id: string): Promise<void> {
   const store = useDownloadsStore.getState();
   const item = store.items.find((i) => i.id === id);
@@ -421,6 +468,21 @@ export async function resumeDownload(id: string): Promise<void> {
   };
   store.upsertItem(updated);
   await upsertDownloadInDb(updated);
+  await processDownloadQueue();
+}
+
+export async function resumeAllDownloads(): Promise<void> {
+  const store = useDownloadsStore.getState();
+  const paused = store.items.filter((i) => i.status === 'paused');
+  for (const item of paused) {
+    const updated: DownloadItemRecord = {
+      ...item,
+      status: 'queued',
+      errorMessage: null,
+    };
+    store.upsertItem(updated);
+    await upsertDownloadInDb(updated);
+  }
   await processDownloadQueue();
 }
 
@@ -489,6 +551,39 @@ export async function renameDownloadedFile(
   await upsertDownloadInDb(updated);
 }
 
+export async function moveDownloadedFileFolder(
+  id: string,
+  newFolder: SaveFolderOption
+): Promise<void> {
+  const store = useDownloadsStore.getState();
+  const item = store.items.find((i) => i.id === id);
+  if (!item || item.folder === newFolder) {
+    return;
+  }
+
+  let nextUri = item.localUri;
+  if (Platform.OS !== 'web' && item.localUri) {
+    try {
+      const targetUri = await buildSafeLocalUri(newFolder, item.fileName, item.id);
+      const info = await FileSystem.getInfoAsync(item.localUri);
+      if (info.exists) {
+        await FileSystem.moveAsync({ from: item.localUri, to: targetUri });
+        nextUri = targetUri;
+      }
+    } catch (err) {
+      logError('moveDownloadedFileFolder', err);
+    }
+  }
+
+  const updated: DownloadItemRecord = {
+    ...item,
+    folder: newFolder,
+    localUri: nextUri,
+  };
+  store.upsertItem(updated);
+  await upsertDownloadInDb(updated);
+}
+
 export async function clearAllCompletedDownloads(): Promise<void> {
   const store = useDownloadsStore.getState();
   const completed = store.items.filter((i) => i.status === 'completed');
@@ -507,3 +602,20 @@ export async function clearAllCompletedDownloads(): Promise<void> {
   await deleteCompletedDownloadsFromDb();
 }
 
+export async function clearAllFailedDownloads(): Promise<void> {
+  const store = useDownloadsStore.getState();
+  const failed = store.items.filter((i) => i.status === 'failed');
+
+  for (const item of failed) {
+    if (item.localUri) {
+      try {
+        await FileSystem.deleteAsync(item.localUri, { idempotent: true });
+      } catch {
+        // Ignore individual deletion failure
+      }
+    }
+  }
+
+  store.removeFailedItems();
+  await deleteFailedDownloadsFromDb();
+}
