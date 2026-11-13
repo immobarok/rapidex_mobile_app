@@ -13,6 +13,8 @@ export function useLibrary() {
     isHydrated,
     handleDelete,
     handleRename,
+    handleMoveFolder,
+    handleCopyUrl,
     handleShareFile,
   } = useDownloads();
 
@@ -21,6 +23,27 @@ export function useLibrary() {
   const [folder, setFolder] = useState<LibraryFolderFilter>('All Folders');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [viewMode, setViewMode] = useState<LibraryViewMode>('list');
+
+  const countsByCategory = useMemo(() => {
+    const counts: Record<LibraryFilterCategory, number> = {
+      all: 0,
+      video: 0,
+      audio: 0,
+      document: 0,
+      other: 0,
+    };
+    for (const item of items) {
+      if (item.status !== 'completed') {
+        continue;
+      }
+      if (folder !== 'All Folders' && item.folder !== folder) {
+        continue;
+      }
+      counts.all += 1;
+      counts[item.category] += 1;
+    }
+    return counts;
+  }, [folder, items]);
 
   const completedFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -66,6 +89,7 @@ export function useLibrary() {
 
   return {
     files: completedFiles,
+    countsByCategory,
     isHydrated,
     searchQuery,
     setSearchQuery,
@@ -79,7 +103,8 @@ export function useLibrary() {
     toggleViewMode,
     handleDelete,
     handleRename,
+    handleMoveFolder,
+    handleCopyUrl,
     handleShareFile,
   };
 }
-

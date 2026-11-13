@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonList } from '@/components/Skeleton';
+import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useLibrary } from '../hooks/useLibrary';
@@ -42,6 +43,7 @@ export function LibraryScreen() {
   const router = useRouter();
   const {
     files,
+    countsByCategory,
     isHydrated,
     searchQuery,
     setSearchQuery,
@@ -55,6 +57,8 @@ export function LibraryScreen() {
     toggleViewMode,
     handleDelete,
     handleRename,
+    handleMoveFolder,
+    handleCopyUrl,
     handleShareFile,
   } = useLibrary();
 
@@ -83,7 +87,10 @@ export function LibraryScreen() {
           <Text style={styles.title}>Library</Text>
           <View style={styles.headerControls}>
             <Pressable
-              onPress={cycleSortBy}
+              onPress={() => {
+                triggerHaptic('selection');
+                cycleSortBy();
+              }}
               accessibilityRole="button"
               accessibilityLabel={`Sort by ${sortBy}`}
               style={styles.controlChip}
@@ -94,7 +101,10 @@ export function LibraryScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={toggleViewMode}
+              onPress={() => {
+                triggerHaptic('selection');
+                toggleViewMode();
+              }}
               accessibilityRole="button"
               accessibilityLabel={`Switch to ${viewMode === 'list' ? 'grid' : 'list'} view`}
               style={styles.iconBtn}
@@ -138,16 +148,21 @@ export function LibraryScreen() {
           >
             {CATEGORIES.map((cat) => {
               const isSelected = category === cat.key;
+              const count = countsByCategory[cat.key];
               return (
                 <Pressable
                   key={cat.key}
-                  onPress={() => setCategory(cat.key)}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setCategory(cat.key);
+                  }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
                   style={[styles.chip, isSelected && styles.chipActive]}
                 >
                   <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                     {cat.label}
+                    {count > 0 ? ` (${count})` : ''}
                   </Text>
                 </Pressable>
               );
@@ -164,7 +179,10 @@ export function LibraryScreen() {
               return (
                 <Pressable
                   key={fld}
-                  onPress={() => setFolder(fld)}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setFolder(fld);
+                  }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
                   style={[styles.folderChip, isSelected && styles.folderChipActive]}
@@ -223,6 +241,8 @@ export function LibraryScreen() {
           item={detailsItem}
           onClose={() => setDetailsItem(null)}
           onRename={handleRename}
+          onMoveFolder={handleMoveFolder}
+          onCopyUrl={handleCopyUrl}
           onShare={handleShareFile}
           onDelete={handleDelete}
         />
@@ -349,4 +369,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
