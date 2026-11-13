@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     paddingRight: spacing.md,
     borderRadius: radius.pill,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: colors.glassBorder,
   },

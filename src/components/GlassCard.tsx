@@ -16,7 +16,7 @@ export const GlassCard = memo(function GlassCard({
   children,
   style,
   contentStyle,
-  intensity = 46,
+  intensity = 54,
   enableBlur = false,
 }: Props) {
   return (

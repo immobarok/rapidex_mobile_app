@@ -4,12 +4,12 @@ export const colors = {
   blobSecondary: 'rgba(220, 224, 232, 0.18)',
   blobTertiary: 'rgba(110, 114, 122, 0.16)',
 
-  glassBackground: 'rgba(24, 26, 31, 0.74)',
-  glassBackgroundStrong: 'rgba(28, 30, 36, 0.88)',
-  glassBar: 'rgba(20, 22, 27, 0.45)',
-  glassBorder: 'rgba(255, 255, 255, 0.15)',
+  glassBackground: 'rgba(20, 22, 27, 0.42)',
+  glassBackgroundStrong: 'rgba(20, 22, 27, 0.58)',
+  glassBar: 'rgba(20, 22, 27, 0.42)',
+  glassBorder: 'rgba(255, 255, 255, 0.16)',
   glassBorderSubtle: 'rgba(255, 255, 255, 0.08)',
-  glassHighlight: 'rgba(255, 255, 255, 0.22)',
+  glassHighlight: 'rgba(255, 255, 255, 0.24)',
 
   accent: '#38BDF8',
   accentLight: '#5EEAD4',
@@ -22,10 +22,10 @@ export const colors = {
   textMuted: '#6B7280',
   textOnAccent: '#071018',
 
-  borderSubtle: 'rgba(255, 255, 255, 0.08)',
-  surfaceSubtle: 'rgba(36, 39, 46, 0.72)',
-  skeletonBase: 'rgba(36, 39, 46, 0.75)',
-  skeletonHighlight: 'rgba(55, 59, 68, 0.85)',
+  borderSubtle: 'rgba(255, 255, 255, 0.09)',
+  surfaceSubtle: 'rgba(255, 255, 255, 0.06)',
+  skeletonBase: 'rgba(255, 255, 255, 0.08)',
+  skeletonHighlight: 'rgba(255, 255, 255, 0.16)',
 
   success: '#34D399',
   successSurface: 'rgba(52, 211, 153, 0.16)',
@@ -36,7 +36,7 @@ export const colors = {
 
   overlay: 'rgba(5, 6, 8, 0.72)',
   playerBackground: '#0A0B0E',
-  playerGlass: 'rgba(24, 26, 31, 0.78)',
+  playerGlass: 'rgba(20, 22, 27, 0.50)',
   playerGlassBorder: 'rgba(255, 255, 255, 0.18)',
   shadowWarm: 'rgba(0, 0, 0, 0.55)',
   shadowDark: 'rgba(0, 0, 0, 0.6)',
