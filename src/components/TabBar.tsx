@@ -165,7 +165,7 @@ export const TabBar = memo(function TabBar({
     if (rowWidth <= 0) return;
     const innerWidth = rowWidth - spacing.sm * 2;
     const slotWidth = innerWidth / totalTabs;
-    const targetX = spacing.sm + state.index * slotWidth + (slotWidth - 44) / 2;
+    const targetX = spacing.sm + state.index * slotWidth + (slotWidth - 18) / 2;
 
     if (reduceMotion) {
       indicatorX.value = withTiming(targetX, { duration: 120 });
@@ -360,14 +360,15 @@ const styles = StyleSheet.create({
   slidingGlowPill: {
     position: 'absolute',
     left: 0,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.accentSurface,
+    bottom: 7,
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
+    shadowOpacity: 0.75,
+    shadowRadius: 8,
   },
   tabItem: {
     flex: 1,
