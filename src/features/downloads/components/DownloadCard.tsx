@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressRing } from '@/components/ProgressRing';
+import { getFileExtension } from '@/lib/fileType';
 import { formatBytes } from '@/lib/formatBytes';
 import { formatEta } from '@/lib/formatDuration';
 import { formatSpeed } from '@/lib/formatSpeed';
@@ -20,6 +21,7 @@ type Props = {
   onRetry: (id: string) => void;
   onDelete: (id: string) => void;
   onShare: (localUri: string) => void;
+  onCopyUrl?: (url: string) => void;
   onOpenItem?: (item: DownloadItemRecord) => void;
 };
 
@@ -33,6 +35,7 @@ export const DownloadCard = memo(function DownloadCard({
   onRetry,
   onDelete,
   onShare,
+  onCopyUrl,
   onOpenItem,
 }: Props) {
   const liveProgress = useDownloadProgress(item.id);
@@ -42,7 +45,13 @@ export const DownloadCard = memo(function DownloadCard({
   const total = liveProgress?.totalBytes ?? item.totalBytes;
   const speed = liveProgress?.speedBytesPerSec ?? 0;
   const eta = liveProgress?.etaSeconds ?? null;
-  const ratio = total > 0 ? downloaded / total : item.status === 'completed' ? 1 : 0;
+  const ratio =
+    total > 0
+      ? Math.min(1, downloaded / total)
+      : item.status === 'completed'
+        ? 1
+        : 0;
+  const ext = getFileExtension(item.fileName).toUpperCase();
 
   const handleCardPress = () => {
     if (isSelectionMode && onToggleSelect) {
@@ -63,6 +72,11 @@ export const DownloadCard = memo(function DownloadCard({
       setShowActions((prev) => !prev);
     }
   };
+
+  const isTransferring =
+    item.status === 'downloading' ||
+    item.status === 'paused' ||
+    item.status === 'queued';
 
   return (
     <Pressable
@@ -86,7 +100,7 @@ export const DownloadCard = memo(function DownloadCard({
             </View>
           ) : null}
 
-          {item.status === 'downloading' || item.status === 'paused' || item.status === 'queued' ? (
+          {isTransferring ? (
             <ProgressRing
               progress={ratio}
               isActive={item.status === 'downloading'}
@@ -109,9 +123,19 @@ export const DownloadCard = memo(function DownloadCard({
                         ? 'musical-notes-outline'
                         : 'document-text-outline'
                 }
-                size={24}
+                size={22}
                 color={item.status === 'failed' ? colors.danger : colors.accent}
               />
+              {ext ? (
+                <Text
+                  style={[
+                    styles.extBadge,
+                    item.status === 'failed' && styles.extBadgeFailed,
+                  ]}
+                >
+                  {ext.slice(0, 4)}
+                </Text>
+              ) : null}
             </View>
           )}
 
@@ -181,8 +205,40 @@ export const DownloadCard = memo(function DownloadCard({
           </View>
         </View>
 
+        {isTransferring ? (
+          <View style={styles.linearTrack}>
+            <View
+              style={[
+                styles.linearFill,
+                {
+                  width: `${Math.round(ratio * 100)}%`,
+                  backgroundColor:
+                    item.status === 'downloading'
+                      ? colors.accent
+                      : colors.textMuted,
+                },
+              ]}
+            />
+          </View>
+        ) : null}
+
         {showActions ? (
           <View style={styles.actionsBar}>
+            {item.status === 'completed' && onOpenItem ? (
+              <Pressable
+                onPress={() => onOpenItem(item)}
+                style={styles.actionPill}
+                accessibilityRole="button"
+                accessibilityLabel="Open file"
+              >
+                <Ionicons
+                  name="play-circle-outline"
+                  size={16}
+                  color={colors.accent}
+                />
+                <Text style={styles.actionLabel}>Open</Text>
+              </Pressable>
+            ) : null}
             {item.status === 'completed' ? (
               <Pressable
                 onPress={() => onShare(item.localUri)}
@@ -192,6 +248,20 @@ export const DownloadCard = memo(function DownloadCard({
               >
                 <Ionicons name="share-outline" size={16} color={colors.textPrimary} />
                 <Text style={styles.actionLabel}>Share</Text>
+              </Pressable>
+            ) : null}
+            {onCopyUrl ? (
+              <Pressable
+                onPress={() => {
+                  onCopyUrl(item.url);
+                  setShowActions(false);
+                }}
+                style={styles.actionPill}
+                accessibilityRole="button"
+                accessibilityLabel="Copy source link"
+              >
+                <Ionicons name="copy-outline" size={15} color={colors.textPrimary} />
+                <Text style={styles.actionLabel}>Copy URL</Text>
               </Pressable>
             ) : null}
             <Pressable
@@ -240,6 +310,15 @@ const styles = StyleSheet.create({
   failedIconBox: {
     backgroundColor: colors.dangerSurface,
   },
+  extBadge: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.accent,
+    marginTop: 1,
+  },
+  extBadgeFailed: {
+    color: colors.danger,
+  },
   infoCol: {
     flex: 1,
     gap: 2,
@@ -271,8 +350,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  linearTrack: {
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+    overflow: 'hidden',
+  },
+  linearFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+  },
   actionsBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     gap: spacing.xs,
     paddingTop: spacing.xs,
@@ -300,4 +390,3 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
 });
-
