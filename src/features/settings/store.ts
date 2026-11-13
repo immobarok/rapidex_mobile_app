@@ -6,6 +6,8 @@ const KEYS = {
   WIFI_ONLY: 'settings.wifiOnly',
   MAX_CONCURRENT: 'settings.maxConcurrent',
   DEFAULT_FOLDER: 'settings.defaultFolder',
+  AUTO_ROUTE_FOLDERS: 'settings.autoRouteFolders',
+  HAPTICS_ENABLED: 'settings.hapticsEnabled',
   NOTIFICATIONS_ENABLED: 'settings.notificationsEnabled',
   ONBOARDING_DONE: 'settings.hasCompletedOnboarding',
 } as const;
@@ -35,6 +37,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   wifiOnly: kvStorage.getBoolean(KEYS.WIFI_ONLY) ?? false,
   maxConcurrent: readInitialMaxConcurrent(),
   defaultFolder: readInitialFolder(),
+  autoRouteFolders: kvStorage.getBoolean(KEYS.AUTO_ROUTE_FOLDERS) ?? true,
+  hapticsEnabled: kvStorage.getBoolean(KEYS.HAPTICS_ENABLED) ?? true,
   notificationsEnabled: kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
   hasCompletedOnboarding: kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
 
@@ -53,6 +57,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ defaultFolder: value });
   },
 
+  setAutoRouteFolders: (value) => {
+    kvStorage.set(KEYS.AUTO_ROUTE_FOLDERS, value);
+    set({ autoRouteFolders: value });
+  },
+
+  setHapticsEnabled: (value) => {
+    kvStorage.set(KEYS.HAPTICS_ENABLED, value);
+    set({ hapticsEnabled: value });
+  },
+
   setNotificationsEnabled: (value) => {
     kvStorage.set(KEYS.NOTIFICATIONS_ENABLED, value);
     set({ notificationsEnabled: value });
@@ -68,6 +82,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       wifiOnly: kvStorage.getBoolean(KEYS.WIFI_ONLY) ?? false,
       maxConcurrent: readInitialMaxConcurrent(),
       defaultFolder: readInitialFolder(),
+      autoRouteFolders: kvStorage.getBoolean(KEYS.AUTO_ROUTE_FOLDERS) ?? true,
+      hapticsEnabled: kvStorage.getBoolean(KEYS.HAPTICS_ENABLED) ?? true,
       notificationsEnabled:
         kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
       hasCompletedOnboarding:
@@ -75,4 +91,3 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     });
   },
 }));
-
