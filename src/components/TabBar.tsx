@@ -1,7 +1,22 @@
-import React, { memo } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useEffect, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVpnStore } from '@/features/vpn/store';
@@ -26,14 +41,13 @@ type Props = {
   activeCount: number;
 };
 
-const TAB_CONFIG: Record<
-  string,
-  {
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    activeIcon: keyof typeof Ionicons.glyphMap;
-  }
-> = {
+type TabConfig = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+};
+
+const TAB_CONFIG: Record<string, TabConfig> = {
   index: { label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   downloads: {
     label: 'Downloads',
@@ -53,6 +67,75 @@ const TAB_CONFIG: Record<
   },
 };
 
+type AnimatedTabItemProps = {
+  routeName: string;
+  config: TabConfig;
+  isFocused: boolean;
+  activeCount: number;
+  reduceMotion: boolean;
+  onPress: () => void;
+};
+
+const AnimatedTabItem = memo(function AnimatedTabItem({
+  routeName,
+  config,
+  isFocused,
+  activeCount,
+  reduceMotion,
+  onPress,
+}: AnimatedTabItemProps) {
+  const scale = useSharedValue(isFocused ? 1.12 : 1);
+  const translateY = useSharedValue(isFocused ? -1.5 : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      scale.value = isFocused ? 1.06 : 1;
+      translateY.value = 0;
+      return;
+    }
+
+    if (isFocused) {
+      scale.value = withSequence(
+        withSpring(1.24, { damping: 12, stiffness: 280 }),
+        withSpring(1.1, { damping: 14, stiffness: 220 }),
+      );
+      translateY.value = withSpring(-2, { damping: 14, stiffness: 240 });
+    } else {
+      scale.value = withSpring(1, { damping: 16, stiffness: 220 });
+      translateY.value = withSpring(0, { damping: 16, stiffness: 220 });
+    }
+  }, [isFocused, reduceMotion, scale, translateY]);
+
+  const iconAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+  }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityLabel={config.label}
+      accessibilityState={{ selected: isFocused }}
+      style={styles.tabItem}
+    >
+      <Animated.View style={[styles.iconWrap, iconAnimStyle]}>
+        <Ionicons
+          name={isFocused ? config.activeIcon : config.icon}
+          size={22}
+          color={isFocused ? colors.accent : colors.textSecondary}
+        />
+        {routeName === 'downloads' && activeCount > 0 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {activeCount > 9 ? '9+' : activeCount}
+            </Text>
+          </View>
+        ) : null}
+      </Animated.View>
+    </Pressable>
+  );
+});
+
 export const TabBar = memo(function TabBar({
   state,
   navigateToTab,
@@ -60,8 +143,71 @@ export const TabBar = memo(function TabBar({
   activeCount,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const reduceMotion = Boolean(useReducedMotion());
   const vpnStatus = useVpnStore((s) => s.status);
   const isVpnConnected = vpnStatus === 'connected';
+
+  const [rowWidth, setRowWidth] = useState(0);
+  const indicatorX = useSharedValue(0);
+  const indicatorScale = useSharedValue(1);
+  const centerScale = useSharedValue(1);
+
+  const visibleRoutes = state.routes.filter((r) => Boolean(TAB_CONFIG[r.name]));
+  const totalTabs = visibleRoutes.length || 5;
+  const activeRoute = state.routes[state.index];
+  const isVpnActive = activeRoute?.name === 'vpn';
+
+  const handleRowLayout = (event: LayoutChangeEvent) => {
+    setRowWidth(event.nativeEvent.layout.width);
+  };
+
+  useEffect(() => {
+    if (rowWidth <= 0) return;
+    const innerWidth = rowWidth - spacing.sm * 2;
+    const slotWidth = innerWidth / totalTabs;
+    const targetX = spacing.sm + state.index * slotWidth + (slotWidth - 44) / 2;
+
+    if (reduceMotion) {
+      indicatorX.value = withTiming(targetX, { duration: 120 });
+      centerScale.value = isVpnActive ? 1.05 : 1;
+      return;
+    }
+
+    indicatorX.value = withSpring(targetX, {
+      damping: 16,
+      stiffness: 210,
+      mass: 0.75,
+    });
+    indicatorScale.value = withSequence(
+      withSpring(1.16, { damping: 12, stiffness: 260 }),
+      withSpring(1, { damping: 14, stiffness: 200 }),
+    );
+    centerScale.value = withSpring(isVpnActive ? 1.07 : 1, {
+      damping: 13,
+      stiffness: 220,
+    });
+  }, [
+    centerScale,
+    indicatorScale,
+    indicatorX,
+    isVpnActive,
+    reduceMotion,
+    rowWidth,
+    state.index,
+    totalTabs,
+  ]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: rowWidth > 0 && !isVpnActive ? 1 : 0,
+    transform: [
+      { translateX: indicatorX.value },
+      { scale: indicatorScale.value },
+    ],
+  }));
+
+  const centerAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: centerScale.value }],
+  }));
 
   const navigateRoute = (route: TabRoute) => {
     triggerHaptic('selection');
@@ -101,7 +247,12 @@ export const TabBar = memo(function TabBar({
             pointerEvents="none"
           />
 
-          <View style={styles.tabsRow}>
+          <View style={styles.tabsRow} onLayout={handleRowLayout}>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.slidingGlowPill, indicatorStyle]}
+            />
+
             {state.routes.map((route, index) => {
               const config = TAB_CONFIG[route.name];
               if (!config) {
@@ -121,22 +272,21 @@ export const TabBar = memo(function TabBar({
                     accessibilityRole="tab"
                     accessibilityLabel="VPN"
                     accessibilityState={{ selected: isFocused }}
-                    style={({ pressed }) => [
-                      styles.centerActionWrap,
-                      pressed && styles.fabPressed,
-                    ]}
+                    style={styles.centerActionWrap}
                   >
-                    <View
+                    <Animated.View
                       style={[
                         styles.centerCircle,
                         isVpnConnected && styles.centerCircleConnected,
                         isFocused && styles.centerCircleFocused,
+                        centerAnimStyle,
                       ]}
                     >
                       <View
                         style={[
                           styles.centerInnerDiamond,
                           isVpnConnected && styles.centerInnerDiamondConnected,
+                          isFocused && !isVpnConnected && styles.centerInnerDiamondActive,
                         ]}
                       >
                         <Ionicons
@@ -146,39 +296,25 @@ export const TabBar = memo(function TabBar({
                           style={styles.centerInnerIcon}
                         />
                       </View>
-                    </View>
+                    </Animated.View>
                   </Pressable>
                 );
               }
 
               return (
-                <Pressable
+                <AnimatedTabItem
                   key={route.key}
+                  routeName={route.name}
+                  config={config}
+                  isFocused={isFocused}
+                  activeCount={activeCount}
+                  reduceMotion={reduceMotion}
                   onPress={() => {
                     if (!isFocused) {
                       navigateRoute(route);
                     }
                   }}
-                  accessibilityRole="tab"
-                  accessibilityLabel={config.label}
-                  accessibilityState={{ selected: isFocused }}
-                  style={styles.tabItem}
-                >
-                  <View style={styles.iconWrap}>
-                    <Ionicons
-                      name={isFocused ? config.activeIcon : config.icon}
-                      size={22}
-                      color={isFocused ? '#FFFFFF' : colors.textSecondary}
-                    />
-                    {route.name === 'downloads' && activeCount > 0 ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
-                          {activeCount > 9 ? '9+' : activeCount}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -221,6 +357,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
   },
+  slidingGlowPill: {
+    position: 'absolute',
+    left: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accentSurface,
+    borderWidth: 1,
+    borderColor: colors.accentBorder,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 12,
+  },
   tabItem: {
     flex: 1,
     minHeight: spacing.touchMin,
@@ -232,9 +382,9 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   centerActionWrap: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: spacing.xs,
   },
   centerCircle: {
     width: 52,
@@ -255,7 +405,10 @@ const styles = StyleSheet.create({
   },
   centerCircleFocused: {
     borderWidth: 2,
-    borderColor: colors.accentLight,
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
   },
   centerInnerDiamond: {
     width: 24,
@@ -266,14 +419,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     transform: [{ rotate: '45deg' }],
   },
+  centerInnerDiamondActive: {
+    backgroundColor: '#0C4A6E',
+  },
   centerInnerDiamondConnected: {
     backgroundColor: '#064E3B',
   },
   centerInnerIcon: {
     transform: [{ rotate: '-45deg' }],
-  },
-  fabPressed: {
-    transform: [{ scale: 0.94 }],
   },
   badge: {
     position: 'absolute',
