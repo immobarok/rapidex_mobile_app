@@ -18,6 +18,7 @@ export const BackgroundBlobs = memo(function BackgroundBlobs({ children }: Props
         contentFit="cover"
         pointerEvents="none"
       />
+      <View style={styles.blackTint} pointerEvents="none" />
       {children}
     </View>
   );
@@ -27,5 +28,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  blackTint: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.30)',
   },
 });

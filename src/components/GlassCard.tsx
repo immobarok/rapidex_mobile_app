@@ -52,9 +52,9 @@ export const GlassCard = memo(function GlassCard({
           ) : null}
           <LinearGradient
             colors={[
-              'rgba(255, 255, 255, 0.08)',
-              'rgba(255, 255, 255, 0.02)',
               'rgba(0, 0, 0, 0.14)',
+              'rgba(0, 0, 0, 0.22)',
+              'rgba(0, 0, 0, 0.32)',
             ]}
             locations={[0, 0.5, 1]}
             start={{ x: 0.2, y: 0 }}
@@ -63,9 +63,9 @@ export const GlassCard = memo(function GlassCard({
             pointerEvents="none"
           />
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.08)', 'transparent']}
+            colors={['rgba(255, 255, 255, 0.04)', 'transparent']}
             start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 0.45 }}
+            end={{ x: 0.5, y: 0.35 }}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: radius.xl - 1,
-    backgroundColor: 'rgba(20, 21, 24, 0.14)',
+    backgroundColor: 'rgba(0, 0, 0, 0.10)',
     borderWidth: 0.5,
     borderColor: 'rgba(0, 0, 0, 0.35)',
     overflow: 'hidden',
