@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AppState,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +10,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
@@ -17,9 +17,13 @@ import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/GlassCard';
 import { OrangeButton } from '@/components/OrangeButton';
 import { SkeletonList } from '@/components/Skeleton';
+import { formatBytes } from '@/lib/formatBytes';
+import { formatSpeed } from '@/lib/formatSpeed';
+import { triggerHaptic } from '@/lib/haptics';
 import { validateDirectUrl } from '@/lib/validateUrl';
 import { colors, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
+import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
 import { DownloadCard } from './DownloadCard';
 
@@ -36,11 +40,40 @@ export function HomeScreen() {
     handleResume,
     handleRetry,
     handleDelete,
+    handleCopyUrl,
     handleShareFile,
   } = useDownloads();
 
+  const stats = useAggregateDownloadStats();
   const [quickUrl, setQuickUrl] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
+  const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
+
+  const checkClipboardForDirectUrl = useCallback(async () => {
+    try {
+      const hasString = await Clipboard.hasStringAsync();
+      if (!hasString) {
+        return;
+      }
+      const text = (await Clipboard.getStringAsync()).trim();
+      const validation = validateDirectUrl(text);
+      if (validation.isValid) {
+        setClipboardSuggestion(validation.normalizedUrl);
+      }
+    } catch {
+      // Ignore clipboard permission errors
+    }
+  }, []);
+
+  useEffect(() => {
+    checkClipboardForDirectUrl();
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        checkClipboardForDirectUrl();
+      }
+    });
+    return () => sub.remove();
+  }, [checkClipboardForDirectUrl]);
 
   const activeItems = useMemo(
     () =>
@@ -59,7 +92,7 @@ export function HomeScreen() {
   );
 
   const handlePasteClipboard = async () => {
-    Haptics.selectionAsync().catch(() => undefined);
+    triggerHaptic('selection');
     try {
       const text = await Clipboard.getStringAsync();
       if (!text.trim()) {
@@ -120,6 +153,62 @@ export function HomeScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.statsRow}>
+          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
+            <Text style={styles.statLabel}>SPEED</Text>
+            <Text style={styles.statValue} numberOfLines={1}>
+              {stats.downloadingCount > 0
+                ? formatSpeed(stats.totalSpeedBytesPerSec)
+                : 'Idle'}
+            </Text>
+          </GlassCard>
+          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
+            <Text style={styles.statLabel}>ACTIVE</Text>
+            <Text style={styles.statValue}>{stats.activeCount}</Text>
+          </GlassCard>
+          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
+            <Text style={styles.statLabel}>SAVED</Text>
+            <Text style={styles.statValue} numberOfLines={1}>
+              {formatBytes(stats.totalSavedBytes)}
+            </Text>
+          </GlassCard>
+        </View>
+
+        {clipboardSuggestion ? (
+          <GlassCard contentStyle={styles.clipboardBanner}>
+            <View style={styles.clipboardIconWrap}>
+              <Ionicons name="sparkles-outline" size={18} color={colors.accent} />
+            </View>
+            <View style={styles.clipboardTextCol}>
+              <Text style={styles.clipboardTitle}>Link detected in clipboard</Text>
+              <Text style={styles.clipboardUrl} numberOfLines={1}>
+                {clipboardSuggestion}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('light');
+                const url = clipboardSuggestion;
+                setClipboardSuggestion(null);
+                openAddSheet(url);
+              }}
+              style={styles.clipboardActionPill}
+              accessibilityRole="button"
+              accessibilityLabel="Queue detected clipboard link"
+            >
+              <Text style={styles.clipboardActionText}>Add</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setClipboardSuggestion(null)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss clipboard link"
+            >
+              <Ionicons name="close" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </GlassCard>
+        ) : null}
+
         {errorBanner ? (
           <Pressable
             onPress={() => setErrorBanner(null)}
@@ -177,7 +266,13 @@ export function HomeScreen() {
             <OrangeButton
               label="Download"
               onPress={handlePressDownload}
-              icon={<Ionicons name="arrow-down-circle-outline" size={18} color={colors.textOnAccent} />}
+              icon={
+                <Ionicons
+                  name="arrow-down-circle-outline"
+                  size={18}
+                  color={colors.textOnAccent}
+                />
+              }
               style={styles.downloadBtn}
             />
           </View>
@@ -207,6 +302,7 @@ export function HomeScreen() {
                   onResume={handleResume}
                   onRetry={handleRetry}
                   onDelete={handleDelete}
+                  onCopyUrl={handleCopyUrl}
                   onShare={handleShareFile}
                   onOpenItem={handleOpenItem}
                 />
@@ -242,6 +338,7 @@ export function HomeScreen() {
                   onResume={handleResume}
                   onRetry={handleRetry}
                   onDelete={handleDelete}
+                  onCopyUrl={handleCopyUrl}
                   onShare={handleShareFile}
                   onOpenItem={handleOpenItem}
                 />
@@ -279,6 +376,68 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSurface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  statCard: {
+    flex: 1,
+  },
+  statContent: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  statValue: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  clipboardBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  clipboardIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.accentSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipboardTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  clipboardTitle: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  clipboardUrl: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  clipboardActionPill: {
+    minHeight: 34,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipboardActionText: {
+    ...typography.caption,
+    color: colors.textOnAccent,
+    fontWeight: '700',
   },
   banner: {
     flexDirection: 'row',
@@ -357,4 +516,3 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
 });
-

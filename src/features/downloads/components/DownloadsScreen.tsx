@@ -8,8 +8,11 @@ import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonList } from '@/components/Skeleton';
 import { useSettingsStore } from '@/features/settings/store';
+import { formatSpeed } from '@/lib/formatSpeed';
+import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
+import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
 import { DownloadsTab } from '../types';
 import { DownloadCard } from './DownloadCard';
@@ -24,14 +27,19 @@ export function DownloadsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const maxConcurrent = useSettingsStore((s) => s.maxConcurrent);
+  const stats = useAggregateDownloadStats();
   const {
     items,
     isHydrated,
     openAddSheet,
     handlePause,
+    handlePauseAll,
     handleResume,
+    handleResumeAll,
     handleRetry,
     handleDelete,
+    handleClearFailed,
+    handleCopyUrl,
     handleShareFile,
   } = useDownloads();
 
@@ -53,9 +61,16 @@ export function DownloadsScreen() {
     return items.filter((i) => i.status === 'failed');
   }, [items, selectedTab]);
 
+  const tabCounts: Record<DownloadsTab, number> = {
+    active: stats.activeCount,
+    completed: stats.completedCount,
+    failed: stats.failedCount,
+  };
+
   const isSelectionMode = selectedIds.length > 0;
 
   const handleToggleSelect = useCallback((id: string) => {
+    triggerHaptic('selection');
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -100,9 +115,12 @@ export function DownloadsScreen() {
           <View>
             <Text style={styles.title}>Downloads</Text>
             <Text style={styles.subtitle}>
-              Queue limit: {maxConcurrent} concurrent transfers
+              {stats.downloadingCount > 0
+                ? `${formatSpeed(stats.totalSpeedBytesPerSec)} • Queue limit: ${maxConcurrent}`
+                : `Queue limit: ${maxConcurrent} concurrent transfers`}
             </Text>
           </View>
+
           {isSelectionMode ? (
             <View style={styles.selectionToolbar}>
               <Pressable
@@ -125,26 +143,63 @@ export function DownloadsScreen() {
                 <Text style={styles.cancelSelectText}>Done</Text>
               </Pressable>
             </View>
+          ) : selectedTab === 'active' && stats.activeCount > 0 ? (
+            <View style={styles.headerActions}>
+              {stats.downloadingCount + stats.queuedCount > 0 ? (
+                <Pressable
+                  onPress={handlePauseAll}
+                  style={styles.headerActionPill}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pause all active downloads"
+                >
+                  <Ionicons name="pause" size={15} color={colors.accent} />
+                  <Text style={styles.headerActionText}>Pause All</Text>
+                </Pressable>
+              ) : null}
+              {stats.pausedCount > 0 ? (
+                <Pressable
+                  onPress={handleResumeAll}
+                  style={styles.headerActionPill}
+                  accessibilityRole="button"
+                  accessibilityLabel="Resume all paused downloads"
+                >
+                  <Ionicons name="play" size={15} color={colors.accent} />
+                  <Text style={styles.headerActionText}>Resume All</Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : selectedTab === 'failed' && filteredItems.length > 0 ? (
-            <Pressable
-              onPress={handleRetryAllFailed}
-              style={styles.retryAllBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Retry all failed downloads"
-            >
-              <Ionicons name="refresh" size={16} color={colors.accent} />
-              <Text style={styles.retryAllText}>Retry All</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={handleRetryAllFailed}
+                style={styles.headerActionPill}
+                accessibilityRole="button"
+                accessibilityLabel="Retry all failed downloads"
+              >
+                <Ionicons name="refresh" size={15} color={colors.accent} />
+                <Text style={styles.headerActionText}>Retry All</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleClearFailed}
+                style={styles.clearFailedPill}
+                accessibilityRole="button"
+                accessibilityLabel="Clear all failed downloads"
+              >
+                <Ionicons name="trash-outline" size={15} color={colors.danger} />
+              </Pressable>
+            </View>
           ) : null}
         </View>
 
         <View style={styles.tabsSegment}>
           {TABS.map((tab) => {
             const isActive = selectedTab === tab.key;
+            const count = tabCounts[tab.key];
             return (
               <Pressable
                 key={tab.key}
                 onPress={() => {
+                  triggerHaptic('selection');
                   setSelectedTab(tab.key);
                   setSelectedIds([]);
                 }}
@@ -154,6 +209,7 @@ export function DownloadsScreen() {
               >
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                   {tab.label}
+                  {count > 0 ? ` (${count})` : ''}
                 </Text>
               </Pressable>
             );
@@ -202,6 +258,7 @@ export function DownloadsScreen() {
                   onResume={handleResume}
                   onRetry={handleRetry}
                   onDelete={handleDelete}
+                  onCopyUrl={handleCopyUrl}
                   onShare={handleShareFile}
                   onOpenItem={handleOpenItem}
                 />
@@ -224,6 +281,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.xs,
   },
   title: {
     ...typography.largeTitle,
@@ -232,6 +290,33 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  headerActionPill: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+  },
+  headerActionText: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '700',
+  },
+  clearFailedPill: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.dangerSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectionToolbar: {
     flexDirection: 'row',
@@ -261,20 +346,6 @@ const styles = StyleSheet.create({
     ...typography.bodyStrong,
     color: colors.accent,
   },
-  retryAllBtn: {
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accentSurface,
-  },
-  retryAllText: {
-    ...typography.caption,
-    color: colors.accent,
-    fontWeight: '700',
-  },
   tabsSegment: {
     flexDirection: 'row',
     padding: 4,
@@ -298,8 +369,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   tabText: {
-    ...typography.bodyMedium,
+    ...typography.caption,
     color: colors.textSecondary,
+    fontWeight: '600',
   },
   tabTextActive: {
     color: colors.textOnAccent,
@@ -309,4 +381,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
