@@ -26,10 +26,14 @@ import { DownloadItemRecord } from '@/types';
 import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
 import {
+  DISCOVER_ARTICLES,
+  DISCOVER_CATEGORIES,
   QUICK_APPS,
   resolveSearchOrUrl,
   useBrowserStore,
 } from '@/features/browser/store';
+import { DiscoverCategory } from '@/features/browser/types';
+import { useVpnStore } from '@/features/vpn/store';
 import { DownloadCard } from './DownloadCard';
 
 export function HomeScreen() {
@@ -51,9 +55,18 @@ export function HomeScreen() {
 
   const stats = useAggregateDownloadStats();
   const openBrowserSheet = useBrowserStore((s) => s.openBrowserSheet);
+  const customShortcuts = useBrowserStore((s) => s.customShortcuts);
+  const addCustomShortcut = useBrowserStore((s) => s.addCustomShortcut);
+  const removeCustomShortcut = useBrowserStore((s) => s.removeCustomShortcut);
+  const vpnStatus = useVpnStore((s) => s.status);
+
   const [quickUrl, setQuickUrl] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
+  const [selectedDiscover, setSelectedDiscover] = useState<DiscoverCategory>('For you');
+  const [isAddingShortcut, setIsAddingShortcut] = useState(false);
+  const [shortcutName, setShortcutName] = useState('');
+  const [shortcutUrl, setShortcutUrl] = useState('');
 
   const checkClipboardForDirectUrl = useCallback(async () => {
     try {
@@ -141,6 +154,29 @@ export function HomeScreen() {
     router.push({ pathname: '/browser', params: { url } });
   };
 
+  const handleSaveShortcut = () => {
+    if (!shortcutUrl.trim()) {
+      return;
+    }
+    triggerHaptic('success');
+    addCustomShortcut(shortcutName, shortcutUrl);
+    setShortcutName('');
+    setShortcutUrl('');
+    setIsAddingShortcut(false);
+  };
+
+  const allApps = useMemo(
+    () => [...QUICK_APPS, ...customShortcuts],
+    [customShortcuts]
+  );
+
+  const filteredArticles = useMemo(() => {
+    if (selectedDiscover === 'For you') {
+      return DISCOVER_ARTICLES;
+    }
+    return DISCOVER_ARTICLES.filter((a) => a.category === selectedDiscover);
+  }, [selectedDiscover]);
+
   const handleOpenItem = (item: DownloadItemRecord) => {
     if (item.category === 'video' || item.category === 'audio') {
       router.push(`/player/${item.id}`);
@@ -164,17 +200,42 @@ export function HomeScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.brandSubtitle}>FAST DIRECT DOWNLOADER</Text>
+            <Text style={styles.brandSubtitle}>PROXY BROWSER & DOWNLOADER</Text>
             <Text style={styles.title}>rapidex</Text>
           </View>
-          <Pressable
-            onPress={() => openAddSheet()}
-            accessibilityRole="button"
-            accessibilityLabel="Open add link sheet"
-            style={styles.headerAction}
-          >
-            <Ionicons name="link-outline" size={22} color={colors.accent} />
-          </Pressable>
+          <View style={styles.headerRight}>
+            <Pressable
+              onPress={() => router.push('/(tabs)/vpn')}
+              accessibilityRole="button"
+              accessibilityLabel="Open VPN settings"
+              style={[
+                styles.vpnStatusPill,
+                vpnStatus === 'connected' && styles.vpnStatusPillActive,
+              ]}
+            >
+              <Ionicons
+                name={vpnStatus === 'connected' ? 'shield-checkmark' : 'shield-outline'}
+                size={15}
+                color={vpnStatus === 'connected' ? colors.success : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.vpnStatusText,
+                  vpnStatus === 'connected' && styles.vpnStatusTextActive,
+                ]}
+              >
+                {vpnStatus === 'connected' ? 'VPN On' : 'VPN'}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => openAddSheet()}
+              accessibilityRole="button"
+              accessibilityLabel="Open add link sheet"
+              style={styles.headerAction}
+            >
+              <Ionicons name="add" size={24} color={colors.accent} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -246,9 +307,15 @@ export function HomeScreen() {
         ) : null}
 
         <GlassCard enableBlur intensity={42} contentStyle={styles.heroCard}>
-          <Text style={styles.cardHeading}>Search, Browse or Paste Direct Link</Text>
           <View style={styles.inputWrap}>
-            <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
+            <Pressable
+              onPress={handleBrowseInput}
+              style={styles.searchIconBadge}
+              accessibilityRole="button"
+              accessibilityLabel="Search or go to URL"
+            >
+              <Ionicons name="search" size={18} color={colors.textOnAccent} />
+            </Pressable>
             <TextInput
               value={quickUrl}
               onChangeText={(val) => {
@@ -257,7 +324,7 @@ export function HomeScreen() {
                   setInputError(null);
                 }
               }}
-              placeholder="Search Google or enter URL..."
+              placeholder="Search or Paste URL"
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
@@ -265,7 +332,7 @@ export function HomeScreen() {
               returnKeyType="go"
               onSubmitEditing={handleBrowseInput}
               style={styles.urlInput}
-              accessibilityLabel="Search Google or enter URL"
+              accessibilityLabel="Search or Paste URL"
             />
             {quickUrl.length > 0 ? (
               <Pressable
@@ -276,19 +343,21 @@ export function HomeScreen() {
               >
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </Pressable>
-            ) : null}
+            ) : (
+              <Pressable
+                onPress={handlePasteClipboard}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Paste from clipboard"
+              >
+                <Ionicons name="clipboard-outline" size={18} color={colors.accent} />
+              </Pressable>
+            )}
           </View>
 
           {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
 
           <View style={styles.heroActions}>
-            <OrangeButton
-              label="Paste"
-              variant="secondary"
-              onPress={handlePasteClipboard}
-              icon={<Ionicons name="clipboard-outline" size={18} color={colors.accent} />}
-              style={styles.pasteBtn}
-            />
             <OrangeButton
               label="Browse"
               variant="secondary"
@@ -312,54 +381,174 @@ export function HomeScreen() {
         </GlassCard>
 
         <GlassCard contentStyle={styles.appsCard}>
-          <View style={styles.appsHeader}>
-            <Text style={styles.cardHeading}>Quick Apps</Text>
-            <View style={styles.browserPills}>
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('selection');
-                  openBrowserSheet('history');
-                }}
-                style={styles.browserPill}
-                accessibilityRole="button"
-                accessibilityLabel="Open browsing history"
-              >
-                <Ionicons name="time-outline" size={15} color={colors.accent} />
-                <Text style={styles.browserPillText}>History</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('selection');
-                  openBrowserSheet('bookmarks');
-                }}
-                style={styles.browserPill}
-                accessibilityRole="button"
-                accessibilityLabel="Open bookmarks"
-              >
-                <Ionicons name="bookmark-outline" size={15} color={colors.accent} />
-                <Text style={styles.browserPillText}>Bookmarks</Text>
-              </Pressable>
-            </View>
-          </View>
-
           <View style={styles.appsGrid}>
-            {QUICK_APPS.map((app) => (
+            {allApps.map((app) => (
               <Pressable
                 key={app.id}
                 onPress={() => handleOpenApp(app.url)}
+                onLongPress={
+                  app.isCustom ? () => removeCustomShortcut(app.id) : undefined
+                }
                 style={styles.appTile}
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${app.name} in browser`}
               >
-                <View style={styles.appIconCircle}>
-                  <Ionicons name={app.icon} size={24} color={app.tintColor} />
+                <View style={[styles.appIconTile, { backgroundColor: app.bgColor }]}>
+                  <Ionicons name={app.icon} size={26} color={app.tintColor} />
                 </View>
                 <Text style={styles.appName} numberOfLines={1}>
                   {app.name}
                 </Text>
               </Pressable>
             ))}
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic('selection');
+                setIsAddingShortcut((prev) => !prev);
+              }}
+              style={styles.appTile}
+              accessibilityRole="button"
+              accessibilityLabel="Add custom shortcut"
+            >
+              <View style={[styles.appIconTile, styles.addAppTile]}>
+                <Ionicons name="add" size={26} color={colors.textOnAccent} />
+              </View>
+              <Text style={styles.appName} numberOfLines={1}>
+                Add
+              </Text>
+            </Pressable>
           </View>
+
+          {isAddingShortcut ? (
+            <View style={styles.shortcutForm}>
+              <TextInput
+                value={shortcutName}
+                onChangeText={setShortcutName}
+                placeholder="Site name (e.g. Wikipedia)"
+                placeholderTextColor={colors.textMuted}
+                style={styles.shortcutInput}
+              />
+              <TextInput
+                value={shortcutUrl}
+                onChangeText={setShortcutUrl}
+                placeholder="URL (e.g. wikipedia.org)"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.shortcutInput}
+              />
+              <View style={styles.shortcutBtns}>
+                <Pressable
+                  onPress={() => setIsAddingShortcut(false)}
+                  style={styles.shortcutCancelBtn}
+                >
+                  <Text style={styles.shortcutCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveShortcut}
+                  style={styles.shortcutSaveBtn}
+                >
+                  <Text style={styles.shortcutSaveText}>Save Shortcut</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.utilityGrid}>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('selection');
+                openBrowserSheet('history');
+              }}
+              style={styles.appTile}
+              accessibilityRole="button"
+              accessibilityLabel="Open browsing history"
+            >
+              <View style={styles.utilityIconTile}>
+                <Ionicons name="time-outline" size={24} color={colors.textPrimary} />
+              </View>
+              <Text style={styles.appName}>History</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic('selection');
+                openBrowserSheet('bookmarks');
+              }}
+              style={styles.appTile}
+              accessibilityRole="button"
+              accessibilityLabel="Open bookmarks"
+            >
+              <View style={styles.utilityIconTile}>
+                <Ionicons name="bookmarks-outline" size={22} color={colors.textPrimary} />
+              </View>
+              <Text style={styles.appName}>Bookmarks</Text>
+            </Pressable>
+          </View>
+        </GlassCard>
+
+        <GlassCard contentStyle={styles.discoverCard}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.discoverTabs}
+          >
+            {DISCOVER_CATEGORIES.map((category) => {
+              const isSelected = selectedDiscover === category;
+              return (
+                <Pressable
+                  key={category}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setSelectedDiscover(category);
+                  }}
+                  style={[
+                    styles.discoverTab,
+                    isSelected && styles.discoverTabActive,
+                  ]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    style={[
+                      styles.discoverTabText,
+                      isSelected && styles.discoverTabTextActive,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {filteredArticles.map((article) => (
+            <Pressable
+              key={article.id}
+              onPress={() => handleOpenApp(article.url)}
+              style={styles.articleRow}
+              accessibilityRole="button"
+              accessibilityLabel={`Read ${article.title}`}
+            >
+              <View style={styles.articleIconWrap}>
+                <Ionicons name={article.icon} size={22} color={colors.accent} />
+              </View>
+              <View style={styles.articleBody}>
+                <Text style={styles.articleTitle} numberOfLines={2}>
+                  {article.title}
+                </Text>
+                <Text style={styles.articleSource}>
+                  {article.source} • {article.category}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textMuted}
+              />
+            </Pressable>
+          ))}
         </GlassCard>
 
         {!isHydrated ? (
@@ -452,6 +641,34 @@ const styles = StyleSheet.create({
   title: {
     ...typography.hero,
     color: colors.textPrimary,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  vpnStatusPill: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.glassBackgroundStrong,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  vpnStatusPillActive: {
+    backgroundColor: colors.successSurface,
+    borderColor: colors.success,
+  },
+  vpnStatusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  vpnStatusTextActive: {
+    color: colors.success,
   },
   headerAction: {
     width: spacing.touchMin,
@@ -547,15 +764,24 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   inputWrap: {
-    minHeight: 50,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    paddingLeft: 6,
+    paddingRight: spacing.md,
+    borderRadius: radius.pill,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.glassBorder,
+  },
+  searchIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   urlInput: {
     flex: 1,
@@ -578,54 +804,48 @@ const styles = StyleSheet.create({
     flex: 1.4,
   },
   appsCard: {
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.md,
-  },
-  appsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.xs,
-  },
-  browserPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  browserPill: {
-    minHeight: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accentSurface,
-    borderWidth: 1,
-    borderColor: colors.accentBorder,
-  },
-  browserPillText: {
-    ...typography.caption,
-    color: colors.accent,
-    fontWeight: '600',
   },
   appsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.xs,
+    flexWrap: 'wrap',
+    rowGap: spacing.md,
   },
   appTile: {
-    flex: 1,
+    width: '25%',
     minHeight: spacing.touchMin,
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 6,
   },
-  appIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: radius.lg,
-    backgroundColor: colors.glassBackgroundStrong,
+  appIconTile: {
+    width: 54,
+    height: 54,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  addAppTile: {
+    backgroundColor: colors.accent,
+  },
+  utilityGrid: {
+    flexDirection: 'row',
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  utilityIconTile: {
+    width: 54,
+    height: 54,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -633,6 +853,104 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  shortcutForm: {
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  shortcutInput: {
+    minHeight: 40,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    ...typography.caption,
+    color: colors.textPrimary,
+  },
+  shortcutBtns: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  shortcutCancelBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  shortcutCancelText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  shortcutSaveBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  shortcutSaveText: {
+    ...typography.caption,
+    color: colors.textOnAccent,
+    fontWeight: '700',
+  },
+  discoverCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  discoverTabs: {
+    gap: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  discoverTab: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  discoverTabActive: {
+    backgroundColor: colors.accentSurface,
+    borderWidth: 1,
+    borderColor: colors.accentBorder,
+  },
+  discoverTabText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  discoverTabTextActive: {
+    color: colors.accent,
+    fontWeight: '700',
+  },
+  articleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  articleIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  articleBody: {
+    flex: 1,
+    gap: 2,
+  },
+  articleTitle: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
+  },
+  articleSource: {
+    ...typography.small,
+    color: colors.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',

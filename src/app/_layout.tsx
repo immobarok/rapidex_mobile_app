@@ -6,9 +6,12 @@ import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { BookmarksHistorySheet } from '@/features/browser/components/BookmarksHistorySheet';
+import { useBrowserStore } from '@/features/browser/store';
 import { AddLinkSheet } from '@/features/downloads/components/AddLinkSheet';
 import { hydrateDownloadsAndRecoverQueue } from '@/features/downloads/services/downloadService';
 import { useSettingsStore } from '@/features/settings/store';
+import { useVpnStore } from '@/features/vpn/store';
 import { colors } from '@/theme';
 
 Notifications.setNotificationHandler({
@@ -23,11 +26,15 @@ Notifications.setNotificationHandler({
 
 export default function RootLayout() {
   const hydrateSettings = useSettingsStore((s) => s.hydrateSettings);
+  const hydrateBrowser = useBrowserStore((s) => s.hydrateBrowser);
+  const hydrateVpn = useVpnStore((s) => s.hydrateVpn);
 
   useEffect(() => {
     hydrateSettings();
+    hydrateBrowser();
+    hydrateVpn();
     hydrateDownloadsAndRecoverQueue();
-  }, [hydrateSettings]);
+  }, [hydrateBrowser, hydrateSettings, hydrateVpn]);
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -46,6 +53,13 @@ export default function RootLayout() {
               options={{ headerShown: false, animation: 'fade' }}
             />
             <Stack.Screen
+              name="browser"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
               name="player/[id]"
               options={{
                 headerShown: false,
@@ -55,6 +69,7 @@ export default function RootLayout() {
             />
           </Stack>
           <AddLinkSheet />
+          <BookmarksHistorySheet />
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>

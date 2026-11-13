@@ -2,9 +2,10 @@ import React, { memo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useVpnStore } from '@/features/vpn/store';
+import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type TabRoute = {
@@ -35,6 +36,7 @@ const TAB_CONFIG: Record<
     icon: 'cloud-download-outline',
     activeIcon: 'cloud-download',
   },
+  vpn: { label: 'VPN', icon: 'shield-outline', activeIcon: 'shield-checkmark' },
   library: { label: 'Library', icon: 'folder-open-outline', activeIcon: 'folder-open' },
   settings: { label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
 };
@@ -43,14 +45,19 @@ export const TabBar = memo(function TabBar({
   state,
   navigateToTab,
   navigation,
-  onOpenAddSheet,
   activeCount,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const vpnStatus = useVpnStore((s) => s.status);
+  const isVpnConnected = vpnStatus === 'connected';
 
-  const handlePressFab = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    onOpenAddSheet();
+  const navigateRoute = (route: TabRoute) => {
+    triggerHaptic('selection');
+    if (navigateToTab) {
+      navigateToTab(route.key);
+    } else {
+      navigation?.navigate(route.name);
+    }
   };
 
   return (
@@ -74,71 +81,93 @@ export const TabBar = memo(function TabBar({
             }
             const isFocused = state.index === index;
 
+            if (route.name === 'vpn') {
+              return <View key={route.key} style={styles.fabSpacer} />;
+            }
+
             const handleTabPress = () => {
-              Haptics.selectionAsync().catch(() => undefined);
               if (!isFocused) {
-                if (navigateToTab) {
-                  navigateToTab(route.key);
-                } else {
-                  navigation?.navigate(route.name);
-                }
+                navigateRoute(route);
               }
             };
 
             return (
-              <React.Fragment key={route.key}>
-                {index === 2 ? <View style={styles.fabSpacer} /> : null}
-                <Pressable
-                  onPress={handleTabPress}
-                  accessibilityRole="tab"
-                  accessibilityLabel={config.label}
-                  accessibilityState={{ selected: isFocused }}
-                  style={styles.tabItem}
+              <Pressable
+                key={route.key}
+                onPress={handleTabPress}
+                accessibilityRole="tab"
+                accessibilityLabel={config.label}
+                accessibilityState={{ selected: isFocused }}
+                style={styles.tabItem}
+              >
+                <View style={[styles.iconWrap, isFocused && styles.activeIconGlow]}>
+                  <Ionicons
+                    name={isFocused ? config.activeIcon : config.icon}
+                    size={22}
+                    color={isFocused ? colors.accent : colors.textSecondary}
+                  />
+                  {route.name === 'downloads' && activeCount > 0 ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {activeCount > 9 ? '9+' : activeCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
+                  ]}
                 >
-                  <View style={[styles.iconWrap, isFocused && styles.activeIconGlow]}>
-                    <Ionicons
-                      name={isFocused ? config.activeIcon : config.icon}
-                      size={22}
-                      color={isFocused ? colors.accent : colors.textSecondary}
-                    />
-                    {route.name === 'downloads' && activeCount > 0 ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
-                          {activeCount > 9 ? '9+' : activeCount}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
-                    ]}
-                  >
-                    {config.label}
-                  </Text>
-                </Pressable>
-              </React.Fragment>
+                  {config.label}
+                </Text>
+              </Pressable>
             );
           })}
         </View>
       </View>
 
-      <Pressable
-        onPress={handlePressFab}
-        accessibilityRole="button"
-        accessibilityLabel="Add new download link"
-        style={({ pressed }) => [styles.fabButton, pressed && styles.fabPressed]}
-      >
-        <LinearGradient
-          colors={[colors.accent, colors.accentLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
-        >
-          <Ionicons name="add" size={30} color={colors.textOnAccent} />
-        </LinearGradient>
-      </Pressable>
+      {(() => {
+        const vpnRoute = state.routes.find((r) => r.name === 'vpn');
+        if (!vpnRoute) return null;
+        const vpnIndex = state.routes.indexOf(vpnRoute);
+        const isVpnFocused = state.index === vpnIndex;
+
+        return (
+          <Pressable
+            onPress={() => navigateRoute(vpnRoute)}
+            accessibilityRole="tab"
+            accessibilityLabel="VPN"
+            accessibilityState={{ selected: isVpnFocused }}
+            style={({ pressed }) => [styles.fabButton, pressed && styles.fabPressed]}
+          >
+            <LinearGradient
+              colors={
+                isVpnConnected
+                  ? [colors.success, '#22C55E']
+                  : [colors.accent, colors.accentLight]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.fabGradient,
+                isVpnFocused && styles.fabFocusedRing,
+              ]}
+            >
+              <Ionicons name="flash" size={26} color={colors.textOnAccent} />
+            </LinearGradient>
+            <Text
+              style={[
+                styles.centerLabel,
+                isVpnFocused ? styles.tabLabelActive : styles.tabLabelInactive,
+              ]}
+            >
+              VPN
+            </Text>
+          </Pressable>
+        );
+      })()}
     </View>
   );
 });
@@ -203,22 +232,29 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   fabSpacer: {
-    width: spacing.fabSize + spacing.xs,
+    width: spacing.fabSize + spacing.sm,
   },
   fabButton: {
     position: 'absolute',
-    top: -16,
-    width: spacing.fabSize,
-    height: spacing.fabSize,
-    borderRadius: spacing.fabSize / 2,
+    top: -18,
+    alignItems: 'center',
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 14,
     elevation: 10,
   },
+  fabFocusedRing: {
+    borderWidth: 2.5,
+    borderColor: colors.background,
+  },
+  centerLabel: {
+    ...typography.small,
+    marginTop: 2,
+  },
   fabGradient: {
-    flex: 1,
+    width: spacing.fabSize,
+    height: spacing.fabSize,
     borderRadius: spacing.fabSize / 2,
     alignItems: 'center',
     justifyContent: 'center',

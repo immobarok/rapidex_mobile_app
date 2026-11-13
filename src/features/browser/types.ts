@@ -6,6 +6,19 @@ export type QuickAppItem = {
   url: string;
   icon: keyof typeof Ionicons.glyphMap;
   tintColor: string;
+  bgColor: string;
+  isCustom?: boolean;
+};
+
+export type DiscoverCategory = 'For you' | 'Tech' | 'Sports' | 'World';
+
+export type DiscoverArticle = {
+  id: string;
+  category: DiscoverCategory;
+  title: string;
+  source: string;
+  url: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
 export type BrowserHistoryEntry = {
