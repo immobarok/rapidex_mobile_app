@@ -16,13 +16,10 @@ import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/GlassCard';
 import { SkeletonList } from '@/components/Skeleton';
-import { formatBytes } from '@/lib/formatBytes';
-import { formatSpeed } from '@/lib/formatSpeed';
 import { triggerHaptic } from '@/lib/haptics';
 import { validateDirectUrl } from '@/lib/validateUrl';
 import { colors, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
-import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
 import {
   DISCOVER_ARTICLES,
@@ -52,7 +49,6 @@ export function HomeScreen() {
     handleShareFile,
   } = useDownloads();
 
-  const stats = useAggregateDownloadStats();
   const openBrowserSheet = useBrowserStore((s) => s.openBrowserSheet);
   const customShortcuts = useBrowserStore((s) => s.customShortcuts);
   const addCustomShortcut = useBrowserStore((s) => s.addCustomShortcut);
@@ -224,27 +220,6 @@ export function HomeScreen() {
               <Ionicons name="add" size={24} color={colors.accent} />
             </Pressable>
           </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
-            <Text style={styles.statLabel}>SPEED</Text>
-            <Text style={styles.statValue} numberOfLines={1}>
-              {stats.downloadingCount > 0
-                ? formatSpeed(stats.totalSpeedBytesPerSec)
-                : 'Idle'}
-            </Text>
-          </GlassCard>
-          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
-            <Text style={styles.statLabel}>ACTIVE</Text>
-            <Text style={styles.statValue}>{stats.activeCount}</Text>
-          </GlassCard>
-          <GlassCard style={styles.statCard} contentStyle={styles.statContent}>
-            <Text style={styles.statLabel}>SAVED</Text>
-            <Text style={styles.statValue} numberOfLines={1}>
-              {formatBytes(stats.totalSavedBytes)}
-            </Text>
-          </GlassCard>
         </View>
 
         {clipboardSuggestion ? (
