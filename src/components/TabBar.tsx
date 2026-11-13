@@ -287,11 +287,7 @@ const styles = StyleSheet.create({
   pillShell: {
     width: '86%',
     maxWidth: 326,
-    shadowColor: colors.shadowDark,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 12,
+    borderRadius: radius.pill,
   },
   barContainer: {
     width: '100%',
