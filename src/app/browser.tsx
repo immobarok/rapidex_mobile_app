@@ -7,3 +7,4 @@ export default function BrowserRoute() {
 
   return <BrowserScreen initialUrl={url ?? 'https://www.google.com'} />;
 }
+

@@ -42,3 +42,4 @@ export function useAggregateDownloadStats() {
     };
   }, [items, progressById]);
 }
+

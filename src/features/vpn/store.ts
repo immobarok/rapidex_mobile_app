@@ -11,6 +11,15 @@ const KEYS = {
 
 export const VPN_SERVERS: VpnServer[] = [
   {
+    id: 'fi-hel',
+    country: 'Finland',
+    city: 'Helsinki',
+    code: 'FI',
+    latencyMs: 65,
+    loadPercent: 18,
+    ipMask: '95.216.44.12',
+  },
+  {
     id: 'sg-sin',
     country: 'Singapore',
     city: 'Marina Bay',
@@ -165,3 +174,4 @@ export const useVpnStore = create<VpnState>((set, get) => ({
     set({ isAutoConnectEnabled: enabled });
   },
 }));
+

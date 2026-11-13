@@ -23,3 +23,4 @@ export function triggerHaptic(
       : Haptics.ImpactFeedbackStyle.Light;
   Haptics.impactAsync(impactStyle).catch(() => undefined);
 }
+

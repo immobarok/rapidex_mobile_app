@@ -11,3 +11,4 @@ export type VpnServer = {
   loadPercent: number;
   ipMask: string;
 };
+
