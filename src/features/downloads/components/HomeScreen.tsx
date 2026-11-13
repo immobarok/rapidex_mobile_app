@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   AppState,
   Platform,
   Pressable,
@@ -30,7 +31,8 @@ import {
   resolveSearchOrUrl,
   useBrowserStore,
 } from '@/features/browser/store';
-import { DiscoverCategory } from '@/features/browser/types';
+import { fetchLiveDiscoverNews } from '@/features/browser/services/newsService';
+import { DiscoverArticle, DiscoverCategory } from '@/features/browser/types';
 import { useVpnStore } from '@/features/vpn/store';
 import { DownloadCard } from './DownloadCard';
 
@@ -64,6 +66,8 @@ export function HomeScreen() {
   const [isListening, setIsListening] = useState(false);
   const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
   const [selectedDiscover, setSelectedDiscover] = useState<DiscoverCategory>('For you');
+  const [liveArticles, setLiveArticles] = useState<DiscoverArticle[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [isAddingShortcut, setIsAddingShortcut] = useState(false);
   const [shortcutName, setShortcutName] = useState('');
   const [shortcutUrl, setShortcutUrl] = useState('');
@@ -202,12 +206,38 @@ export function HomeScreen() {
     [customShortcuts]
   );
 
-  const filteredArticles = useMemo(() => {
-    if (selectedDiscover === 'For you') {
-      return DISCOVER_ARTICLES;
-    }
-    return DISCOVER_ARTICLES.filter((a) => a.category === selectedDiscover);
-  }, [selectedDiscover]);
+  const loadNews = useCallback(
+    async (category: DiscoverCategory, forceRefresh = false) => {
+      setIsLoadingNews(true);
+      try {
+        const fetched = await fetchLiveDiscoverNews(category, forceRefresh);
+        if (fetched.length > 0) {
+          setLiveArticles(fetched);
+        } else {
+          setLiveArticles(
+            category === 'For you'
+              ? DISCOVER_ARTICLES
+              : DISCOVER_ARTICLES.filter((a) => a.category === category)
+          );
+        }
+      } catch {
+        setLiveArticles(
+          category === 'For you'
+            ? DISCOVER_ARTICLES
+            : DISCOVER_ARTICLES.filter((a) => a.category === category)
+        );
+      } finally {
+        setIsLoadingNews(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadNews(selectedDiscover);
+  }, [loadNews, selectedDiscover]);
+
+  const filteredArticles = liveArticles;
 
   const handleOpenItem = (item: DownloadItemRecord) => {
     if (item.category === 'video' || item.category === 'audio') {
@@ -487,71 +517,92 @@ export function HomeScreen() {
         </GlassCard>
 
         <GlassCard contentStyle={styles.discoverCard}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.discoverTabs}
-          >
-            {DISCOVER_CATEGORIES.map((category) => {
-              const isSelected = selectedDiscover === category;
-              return (
-                <Pressable
-                  key={category}
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    setSelectedDiscover(category);
-                  }}
-                  style={[
-                    styles.discoverTab,
-                    isSelected && styles.discoverTabActive,
-                  ]}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <Text
-                    style={[
-                      styles.discoverTabText,
-                      isSelected && styles.discoverTabTextActive,
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {filteredArticles.map((article) => (
-            <Pressable
-              key={article.id}
-              onPress={() => handleOpenApp(article.url)}
-              style={styles.articleCard}
-              accessibilityRole="button"
-              accessibilityLabel={`Read ${article.title}`}
+          <View style={styles.discoverHeaderRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.discoverTabs}
             >
-              <Image
-                source={{ uri: article.imageUrl }}
-                style={styles.articleImage}
-                contentFit="cover"
-                transition={200}
-              />
-              <View style={styles.articleFooter}>
-                <View style={styles.articleBody}>
-                  <Text style={styles.articleTitle} numberOfLines={2}>
-                    {article.title}
-                  </Text>
-                  <Text style={styles.articleSource}>
-                    {article.source} • {article.category}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-              </View>
+              {DISCOVER_CATEGORIES.map((category) => {
+                const isSelected = selectedDiscover === category;
+                return (
+                  <Pressable
+                    key={category}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setSelectedDiscover(category);
+                    }}
+                    style={[
+                      styles.discoverTab,
+                      isSelected && styles.discoverTabActive,
+                    ]}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text
+                      style={[
+                        styles.discoverTabText,
+                        isSelected && styles.discoverTabTextActive,
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic('selection');
+                loadNews(selectedDiscover, true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh live news feed"
+              style={styles.refreshNewsBtn}
+            >
+              <Ionicons name="refresh" size={16} color={colors.accent} />
             </Pressable>
-          ))}
+          </View>
+
+          {isLoadingNews && filteredArticles.length === 0 ? (
+            <View style={styles.newsLoadingBox}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={styles.newsLoadingText}>Loading live stories...</Text>
+            </View>
+          ) : (
+            filteredArticles.map((article) => (
+              <Pressable
+                key={article.id}
+                onPress={() => handleOpenApp(article.url)}
+                style={styles.articleCard}
+                accessibilityRole="button"
+                accessibilityLabel={`Read ${article.title}`}
+              >
+                <Image
+                  source={{ uri: article.imageUrl }}
+                  style={styles.articleImage}
+                  contentFit="cover"
+                  transition={200}
+                />
+                <View style={styles.articleFooter}>
+                  <View style={styles.articleBody}>
+                    <Text style={styles.articleTitle} numberOfLines={2}>
+                      {article.title}
+                    </Text>
+                    <Text style={styles.articleSource}>
+                      {article.source} • {article.category}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="ellipsis-vertical"
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </View>
+              </Pressable>
+            ))
+          )}
         </GlassCard>
 
         {!isHydrated ? (
@@ -915,9 +966,32 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  discoverHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  refreshNewsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newsLoadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.lg,
+  },
+  newsLoadingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
   discoverTabs: {
     gap: spacing.xs,
-    paddingBottom: spacing.xs,
   },
   discoverTab: {
     paddingHorizontal: spacing.md,
