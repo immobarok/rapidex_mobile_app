@@ -24,7 +24,6 @@ export const colors = {
   glassBorder: 'rgba(255, 255, 255, 0.20)',
   glassBorderSubtle: 'rgba(255, 255, 255, 0.10)',
   glassHighlight: 'rgba(255, 255, 255, 0.28)',
-  glassActivePill: 'rgba(255, 255, 255, 0.11)',
   glassGrabber: 'rgba(255, 255, 255, 0.28)',
 
   accent: '#38BDF8',

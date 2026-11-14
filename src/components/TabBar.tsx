@@ -1,6 +1,5 @@
 import React, { memo, useEffect } from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -18,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useVpnStore } from '@/features/vpn/store';
 import { triggerHaptic } from '@/lib/haptics';
-import { colors, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 type TabRoute = {
   key: string;
@@ -115,13 +114,7 @@ const AnimatedTabItem = memo(function AnimatedTabItem({
       accessibilityState={{ selected: isFocused }}
       style={styles.tabItem}
     >
-      <Animated.View
-        style={[
-          styles.iconWrap,
-          isFocused && styles.iconWrapFocused,
-          iconAnimStyle,
-        ]}
-      >
+      <Animated.View style={[styles.iconWrap, iconAnimStyle]}>
         <Ionicons
           name={isFocused ? config.activeIcon : config.icon}
           size={22}
@@ -293,15 +286,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     position: 'relative',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-  },
-  iconWrapFocused: {
-    backgroundColor: colors.glassActivePill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.glassBorderSubtle,
-    ...(Platform.OS === 'ios' ? { borderCurve: 'continuous' as const } : {}),
+    padding: 6,
   },
   centerActionWrap: {
     flex: 1,
