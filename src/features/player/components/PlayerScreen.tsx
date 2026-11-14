@@ -21,6 +21,7 @@ import { GlassSurface } from '@/components/GlassSurface';
 import { useDownloadsStore } from '@/features/downloads/store';
 import { formatDuration } from '@/lib/formatDuration';
 import { triggerHaptic } from '@/lib/haptics';
+import { navigateBackOrHome } from '@/lib/navigation';
 import { colors, radius, spacing, typography } from '@/theme';
 import { usePlayerPosition } from '../hooks/usePlayerPosition';
 import {
@@ -130,7 +131,7 @@ export function PlayerScreen({ id }: Props) {
           title="Media Not Found"
           description="This file was moved or deleted from your library."
           actionLabel="Go Back"
-          onAction={() => router.back()}
+          onAction={() => navigateBackOrHome(router, '/(tabs)/library')}
         />
       </View>
     );
@@ -293,7 +294,7 @@ export function PlayerScreen({ id }: Props) {
           contentStyle={styles.topGlassBarContent}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => navigateBackOrHome(router)}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Close player"
