@@ -25,3 +25,4 @@ export function getCountryFlagEmoji(countryCode?: string | null): string | null 
     String.fromCodePoint(iso.charCodeAt(1) + REGIONAL_INDICATOR_OFFSET)
   );
 }
+
