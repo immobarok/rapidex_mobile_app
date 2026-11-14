@@ -15,6 +15,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 import { PublicIpInfo, VpnServer, VpnStatus } from '../types';
+import { getCountryFlagEmoji } from '../utils/countryFlag';
 
 type Props = {
   status: VpnStatus;
@@ -90,6 +91,7 @@ export function VpnConnectionHero({
     transform: [{ scale: pulse.value }],
   }));
 
+  const activeFlag = getCountryFlagEmoji(activeServer?.code);
   const isOpenVpn = activeServer?.protocol === 'OpenVPN';
   const endpointOrTunnelValue = isOpenVpn
     ? activeServer?.endpointHost ?? 'Dynamic'
@@ -227,9 +229,9 @@ export function VpnConnectionHero({
               numberOfLines={1}
             >
               {isConnected
-                ? `Connected · ${locationLabel}`
+                ? `${activeFlag ? `${activeFlag} ` : ''}Connected · ${locationLabel}`
                 : isConnecting
-                  ? `Connecting ${activeServer?.protocol ?? 'VPN'}...`
+                  ? `Connecting ${activeFlag ? `${activeFlag} ` : ''}${activeServer?.name ?? activeServer?.protocol ?? 'VPN'}...`
                   : locationLabel}
             </Text>
           </View>

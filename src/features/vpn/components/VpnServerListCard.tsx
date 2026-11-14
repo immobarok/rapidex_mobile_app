@@ -11,6 +11,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 import { VpnServer } from '../types';
+import { getCountryFlagEmoji } from '../utils/countryFlag';
 
 type Props = {
   servers: VpnServer[];
@@ -87,6 +88,8 @@ export function VpnServerListCard({
     );
   }
 
+  const activeFlag = getCountryFlagEmoji(activeServer.code);
+
   return (
     <GlassCard contentStyle={styles.card}>
       <Pressable
@@ -99,12 +102,21 @@ export function VpnServerListCard({
         style={styles.selectedRow}
       >
         <View style={styles.badgeCircle}>
-          <Text style={styles.badgeCode}>{activeServer.code}</Text>
+          {activeFlag ? (
+            <Text style={styles.flagLarge}>{activeFlag}</Text>
+          ) : (
+            <Text style={styles.badgeCode}>{activeServer.code}</Text>
+          )}
         </View>
         <View style={styles.infoCol}>
-          <Text style={styles.serverName} numberOfLines={1}>
-            {activeServer.name}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.serverName} numberOfLines={1}>
+              {activeServer.name}
+            </Text>
+            {activeFlag ? (
+              <Text style={styles.codeLabel}>{activeServer.code}</Text>
+            ) : null}
+          </View>
           <Text style={styles.serverSub} numberOfLines={1}>
             {activeServer.city}
             {activeServer.latencyMs !== null ? ` · ${activeServer.latencyMs}ms` : ''}
@@ -121,6 +133,7 @@ export function VpnServerListCard({
         <View style={styles.list}>
           {servers.map((server) => {
             const isSelected = server.id === activeServer.id;
+            const rowFlag = getCountryFlagEmoji(server.code);
             return (
               <Pressable
                 key={server.id}
@@ -133,12 +146,21 @@ export function VpnServerListCard({
                 style={[styles.serverRow, isSelected && styles.serverRowActive]}
               >
                 <View style={styles.badgeSmall}>
-                  <Text style={styles.badgeCode}>{server.code}</Text>
+                  {rowFlag ? (
+                    <Text style={styles.flagSmall}>{rowFlag}</Text>
+                  ) : (
+                    <Text style={styles.badgeCode}>{server.code}</Text>
+                  )}
                 </View>
                 <View style={styles.infoCol}>
-                  <Text style={styles.serverName} numberOfLines={1}>
-                    {server.name}
-                  </Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.serverName} numberOfLines={1}>
+                      {server.name}
+                    </Text>
+                    {rowFlag ? (
+                      <Text style={styles.codeLabel}>{server.code}</Text>
+                    ) : null}
+                  </View>
                   <Text style={styles.serverSub} numberOfLines={1}>
                     {server.city} · {server.endpointHost}
                   </Text>
@@ -246,8 +268,20 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   badgeCode: { ...typography.caption, fontWeight: '700', color: colors.accent },
+  flagLarge: { fontSize: 22, lineHeight: 26 },
+  flagSmall: { fontSize: 18, lineHeight: 22 },
   infoCol: { flex: 1, paddingRight: spacing.xs },
-  serverName: { ...typography.bodyStrong, color: colors.textPrimary },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  serverName: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  codeLabel: {
+    ...typography.small,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
   serverSub: { ...typography.caption, color: colors.textSecondary },
   addIconBtn: {
     width: 36,
