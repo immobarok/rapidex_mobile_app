@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from '@/components/GlassCard';
+import { GlassSurface } from '@/components/GlassSurface';
 import { OrangeButton } from '@/components/OrangeButton';
 import { useSettingsStore } from '@/features/settings/store';
 import { triggerHaptic } from '@/lib/haptics';
@@ -136,14 +136,13 @@ export function OnboardingScreen({ onFinish }: Props) {
                 accessibilityLabel="Continue to Rapidex"
                 style={styles.tiltedPromptWrap}
               >
-                <View style={styles.tiltedPrompt}>
-                  {Platform.OS !== 'web' ? (
-                    <BlurView
-                      intensity={45}
-                      tint="dark"
-                      style={StyleSheet.absoluteFill}
-                    />
-                  ) : null}
+                <GlassSurface
+                  variant="pill"
+                  borderRadius={radius.pill}
+                  isInteractive
+                  style={styles.tiltedPromptShell}
+                  contentStyle={styles.tiltedPrompt}
+                >
                   <View style={styles.promptOrb}>
                     <Image
                       source={{ uri: ORB_IMAGE_URL }}
@@ -157,7 +156,7 @@ export function OnboardingScreen({ onFinish }: Props) {
                   <View style={styles.promptSendBtn}>
                     <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
                   </View>
-                </View>
+                </GlassSurface>
               </Pressable>
             </View>
 
@@ -184,7 +183,7 @@ export function OnboardingScreen({ onFinish }: Props) {
           </>
         ) : (
           <View style={styles.explainerWrap}>
-            <GlassCard enableBlur intensity={48} contentStyle={styles.cardBody}>
+            <GlassCard enableBlur intensity={76} contentStyle={styles.cardBody}>
               <View style={styles.iconCircle}>
                 <Ionicons
                   name="notifications-outline"
@@ -280,9 +279,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
+    borderColor: colors.glassBorder,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'flex-end',
+    ...(Platform.OS === 'ios' ? { borderCurve: 'continuous' as const } : {}),
   },
   illustrationImage: {
     ...StyleSheet.absoluteFill,
@@ -302,8 +302,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(10, 14, 24, 0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+    ...(Platform.OS === 'ios' ? { borderCurve: 'continuous' as const } : {}),
   },
   miniBadgeText: {
     ...typography.small,
@@ -314,22 +315,18 @@ const styles = StyleSheet.create({
     marginTop: -22,
     transform: [{ rotate: '4deg' }],
   },
-  tiltedPrompt: {
-    minHeight: 54,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(29, 78, 216, 0.48)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(191, 219, 254, 0.45)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    gap: spacing.sm,
-    overflow: 'hidden',
+  tiltedPromptShell: {
     shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 16,
-    elevation: 8,
+  },
+  tiltedPrompt: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
   },
   promptOrb: {
     width: 30,

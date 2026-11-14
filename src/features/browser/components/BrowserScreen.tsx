@@ -19,7 +19,7 @@ import { OrangeButton } from '@/components/OrangeButton';
 import { useDownloadsStore } from '@/features/downloads/store';
 import { triggerHaptic } from '@/lib/haptics';
 import { validateDirectUrl } from '@/lib/validateUrl';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, radius, spacing, typography } from '@/theme';
 import { resolveSearchOrUrl, useBrowserStore } from '../store';
 
 type WebViewHandle = {
@@ -273,8 +273,7 @@ const styles = StyleSheet.create({
     height: spacing.touchMin,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -287,8 +286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   addressInput: {
     flex: 1,

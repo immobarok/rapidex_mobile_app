@@ -14,10 +14,10 @@ import {
   VideoContentFit,
   VideoView,
 } from 'expo-video';
-import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '@/components/EmptyState';
+import { GlassSurface } from '@/components/GlassSurface';
 import { useDownloadsStore } from '@/features/downloads/store';
 import { formatDuration } from '@/lib/formatDuration';
 import { triggerHaptic } from '@/lib/haptics';
@@ -242,9 +242,14 @@ export function PlayerScreen({ id }: Props) {
         ) : null}
 
         {seekFeedback ? (
-          <View style={styles.seekFeedbackPill}>
+          <GlassSurface
+            variant="pill"
+            borderRadius={radius.pill}
+            style={styles.seekFeedbackWrap}
+            contentStyle={styles.seekFeedbackPill}
+          >
             <Text style={styles.seekFeedbackText}>{seekFeedback}</Text>
-          </View>
+          </GlassSurface>
         ) : null}
       </View>
 
@@ -261,26 +266,32 @@ export function PlayerScreen({ id }: Props) {
               setIsLocked(false);
               setControlsVisible(true);
             }}
-            style={styles.unlockPill}
             accessibilityRole="button"
             accessibilityLabel="Unlock player controls"
           >
-            <Ionicons name="lock-closed" size={16} color={colors.accent} />
-            <Text style={styles.unlockText}>Tap to Unlock</Text>
+            <GlassSurface
+              variant="pill"
+              borderRadius={radius.pill}
+              isInteractive
+              contentStyle={styles.unlockPill}
+            >
+              <Ionicons name="lock-closed" size={16} color={colors.accent} />
+              <Text style={styles.unlockText}>Tap to Unlock</Text>
+            </GlassSurface>
           </Pressable>
         </View>
       ) : null}
 
       {controlsVisible && !isLocked ? (
-        <View
+        <GlassSurface
+          variant="hud"
+          borderRadius={radius.xl}
           style={[
             styles.topGlassBar,
             { top: insets.top + spacing.xs },
           ]}
+          contentStyle={styles.topGlassBarContent}
         >
-          {Platform.OS !== 'web' ? (
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : null}
           <Pressable
             onPress={() => router.back()}
             hitSlop={10}
@@ -288,7 +299,7 @@ export function PlayerScreen({ id }: Props) {
             accessibilityLabel="Close player"
             style={styles.roundBtn}
           >
-            <Ionicons name="chevron-down" size={24} color={colors.textOnAccent} />
+            <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
           </Pressable>
 
           <View style={styles.titleWrap}>
@@ -315,7 +326,7 @@ export function PlayerScreen({ id }: Props) {
               <Ionicons
                 name={contentFit === 'contain' ? 'expand-outline' : 'contract-outline'}
                 size={20}
-                color={colors.textOnAccent}
+                color={colors.textPrimary}
               />
             </Pressable>
           ) : null}
@@ -330,7 +341,7 @@ export function PlayerScreen({ id }: Props) {
             <Ionicons
               name={sleepMinutes > 0 ? 'moon' : 'moon-outline'}
               size={19}
-              color={sleepMinutes > 0 ? colors.accent : colors.textOnAccent}
+              color={sleepMinutes > 0 ? colors.accent : colors.textPrimary}
             />
           </Pressable>
 
@@ -344,7 +355,7 @@ export function PlayerScreen({ id }: Props) {
             accessibilityLabel="Lock player controls"
             style={styles.roundBtn}
           >
-            <Ionicons name="lock-open-outline" size={19} color={colors.textOnAccent} />
+            <Ionicons name="lock-open-outline" size={19} color={colors.textPrimary} />
           </Pressable>
 
           {canUsePip ? (
@@ -355,22 +366,22 @@ export function PlayerScreen({ id }: Props) {
               accessibilityLabel="Enter Picture in Picture"
               style={styles.roundBtn}
             >
-              <Ionicons name="albums-outline" size={20} color={colors.textOnAccent} />
+              <Ionicons name="albums-outline" size={20} color={colors.textPrimary} />
             </Pressable>
           ) : null}
-        </View>
+        </GlassSurface>
       ) : null}
 
       {(controlsVisible || item.category === 'audio') && !isLocked ? (
-        <View
+        <GlassSurface
+          variant="hud"
+          borderRadius={radius.xl}
           style={[
             styles.bottomGlassControls,
             { bottom: Math.max(insets.bottom, spacing.md) },
           ]}
+          contentStyle={styles.bottomGlassContent}
         >
-          {Platform.OS !== 'web' ? (
-            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : null}
 
           <Pressable
             onLayout={handleScrubberLayout}
@@ -425,7 +436,7 @@ export function PlayerScreen({ id }: Props) {
               <Ionicons
                 name={prevItem ? 'play-skip-back' : 'play-back'}
                 size={22}
-                color={colors.textOnAccent}
+                color={colors.textPrimary}
               />
             </Pressable>
 
@@ -460,7 +471,7 @@ export function PlayerScreen({ id }: Props) {
               <Ionicons
                 name={nextItem ? 'play-skip-forward' : 'play-forward'}
                 size={22}
-                color={colors.textOnAccent}
+                color={colors.textPrimary}
               />
             </Pressable>
 
@@ -478,11 +489,11 @@ export function PlayerScreen({ id }: Props) {
                     : 'chatbox-ellipses-outline'
                 }
                 size={18}
-                color={subtitlesEnabled ? colors.accent : colors.textOnAccent}
+                color={subtitlesEnabled ? colors.accent : colors.textPrimary}
               />
             </Pressable>
           </View>
-        </View>
+        </GlassSurface>
       ) : null}
     </View>
   );
@@ -519,18 +530,16 @@ const styles = StyleSheet.create({
   tapZone: {
     flex: 1,
   },
-  seekFeedbackPill: {
+  seekFeedbackWrap: {
     position: 'absolute',
+  },
+  seekFeedbackPill: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.playerGlass,
-    borderWidth: 1,
-    borderColor: colors.playerGlassBorder,
   },
   seekFeedbackText: {
     ...typography.title,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
   },
   lockedBar: {
     position: 'absolute',
@@ -542,30 +551,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.playerGlass,
-    borderWidth: 1,
-    borderColor: colors.playerGlassBorder,
   },
   unlockText: {
     ...typography.caption,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   topGlassBar: {
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
+  },
+  topGlassBarContent: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: radius.xl,
-    backgroundColor: colors.playerGlass,
-    borderWidth: 1,
-    borderColor: colors.playerGlassBorder,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    overflow: 'hidden',
   },
   titleWrap: {
     flex: 1,
@@ -573,11 +575,11 @@ const styles = StyleSheet.create({
   },
   fileTitle: {
     ...typography.bodyStrong,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
   },
   fileSubtitle: {
     ...typography.small,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   audioArtworkCard: {
     alignItems: 'center',
@@ -596,24 +598,21 @@ const styles = StyleSheet.create({
   },
   audioTitle: {
     ...typography.title,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   audioSubtitle: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   bottomGlassControls: {
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
+  },
+  bottomGlassContent: {
     padding: spacing.lg,
-    borderRadius: radius.xl,
-    backgroundColor: colors.playerGlass,
-    borderWidth: 1,
-    borderColor: colors.playerGlassBorder,
     gap: spacing.sm,
-    overflow: 'hidden',
   },
   scrubberHitArea: {
     minHeight: 32,
@@ -637,7 +636,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     ...typography.small,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
   },
   sleepBadge: {
     ...typography.small,
@@ -673,13 +672,15 @@ const styles = StyleSheet.create({
     height: spacing.touchMin,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.playerGlass,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pillText: {
     ...typography.caption,
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   disabledBtn: {

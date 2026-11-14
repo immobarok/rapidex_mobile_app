@@ -132,7 +132,7 @@ export function SettingsScreen() {
       >
         <Text style={styles.title}>Settings</Text>
 
-        <GlassCard enableBlur intensity={40} contentStyle={styles.sectionCard}>
+        <GlassCard enableBlur contentStyle={styles.sectionCard}>
           <Text style={styles.sectionHeader}>Download Preferences</Text>
 
           <View style={styles.settingRow}>

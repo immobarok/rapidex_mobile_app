@@ -10,7 +10,7 @@ import { SkeletonList } from '@/components/Skeleton';
 import { useSettingsStore } from '@/features/settings/store';
 import { formatSpeed } from '@/lib/formatSpeed';
 import { triggerHaptic } from '@/lib/haptics';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, iosContinuousCurve, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useAggregateDownloadStats } from '../hooks/useAggregateDownloadStats';
 import { useDownloads } from '../hooks/useDownloads';
@@ -351,13 +351,13 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: radius.lg,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   tabPill: {
     flex: 1,
     minHeight: 40,
     borderRadius: radius.md,
+    ...iosContinuousCurve,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -5,10 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
-  ViewStyle,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -18,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassSurface } from '@/components/GlassSurface';
 import { useVpnStore } from '@/features/vpn/store';
 import { triggerHaptic } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme';
@@ -117,7 +115,13 @@ const AnimatedTabItem = memo(function AnimatedTabItem({
       accessibilityState={{ selected: isFocused }}
       style={styles.tabItem}
     >
-      <Animated.View style={[styles.iconWrap, iconAnimStyle]}>
+      <Animated.View
+        style={[
+          styles.iconWrap,
+          isFocused && styles.iconWrapFocused,
+          iconAnimStyle,
+        ]}
+      >
         <Ionicons
           name={isFocused ? config.activeIcon : config.icon}
           size={22}
@@ -184,125 +188,78 @@ export const TabBar = memo(function TabBar({
       ]}
       pointerEvents="box-none"
     >
-      <View style={styles.pillShell}>
-        <LinearGradient
-          colors={[
-            'rgba(255, 255, 255, 0.52)',
-            'rgba(255, 255, 255, 0.16)',
-            'rgba(255, 255, 255, 0.03)',
-            'rgba(255, 255, 255, 0.08)',
-            'rgba(255, 255, 255, 0.28)',
-          ]}
-          locations={[0, 0.14, 0.5, 0.86, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.pillRim}
-        >
-          <View
-            style={[
-              styles.barContainer,
-              Platform.OS === 'web'
-                ? ({
-                    backdropFilter: 'blur(16px) saturate(135%)',
-                    WebkitBackdropFilter: 'blur(16px) saturate(135%)',
-                  } as unknown as ViewStyle)
-                : undefined,
-            ]}
-          >
-            {Platform.OS !== 'web' ? (
-              <BlurView
-                intensity={32}
-                tint="dark"
-                style={StyleSheet.absoluteFill}
-              />
-            ) : null}
-            <LinearGradient
-              colors={[
-                'rgba(0, 0, 0, 0.16)',
-                'rgba(0, 0, 0, 0.28)',
-              ]}
-              start={{ x: 0.2, y: 0 }}
-              end={{ x: 0.8, y: 1 }}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-            />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.04)', 'transparent']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 0.45 }}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-            />
+      <GlassSurface
+        variant="bar"
+        borderRadius={30}
+        isInteractive
+        style={styles.pillShell}
+        contentStyle={styles.tabsRow}
+      >
+        {state.routes.map((route, index) => {
+          const config = TAB_CONFIG[route.name];
+          if (!config) {
+            return null;
+          }
+          const isFocused = state.index === index;
 
-          <View style={styles.tabsRow}>
-            {state.routes.map((route, index) => {
-              const config = TAB_CONFIG[route.name];
-              if (!config) {
-                return null;
-              }
-              const isFocused = state.index === index;
-
-              if (route.name === 'vpn') {
-                return (
-                  <Pressable
-                    key={route.key}
-                    onPress={() => {
-                      if (!isFocused) {
-                        navigateRoute(route);
-                      }
-                    }}
-                    accessibilityRole="tab"
-                    accessibilityLabel="VPN"
-                    accessibilityState={{ selected: isFocused }}
-                    style={styles.centerActionWrap}
+          if (route.name === 'vpn') {
+            return (
+              <Pressable
+                key={route.key}
+                onPress={() => {
+                  if (!isFocused) {
+                    navigateRoute(route);
+                  }
+                }}
+                accessibilityRole="tab"
+                accessibilityLabel="VPN"
+                accessibilityState={{ selected: isFocused }}
+                style={styles.centerActionWrap}
+              >
+                <Animated.View
+                  style={[
+                    styles.centerCircle,
+                    isVpnConnected && styles.centerCircleConnected,
+                    isFocused && styles.centerCircleFocused,
+                    centerAnimStyle,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.centerInnerDiamond,
+                      isVpnConnected && styles.centerInnerDiamondConnected,
+                      isFocused && !isVpnConnected && styles.centerInnerDiamondActive,
+                    ]}
                   >
-                    <Animated.View
-                      style={[
-                        styles.centerCircle,
-                        isVpnConnected && styles.centerCircleConnected,
-                        isFocused && styles.centerCircleFocused,
-                        centerAnimStyle,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.centerInnerDiamond,
-                          isVpnConnected && styles.centerInnerDiamondConnected,
-                          isFocused && !isVpnConnected && styles.centerInnerDiamondActive,
-                        ]}
-                      >
-                        <Ionicons
-                          name={isVpnConnected ? 'shield-checkmark' : 'flash'}
-                          size={16}
-                          color="#FFFFFF"
-                          style={styles.centerInnerIcon}
-                        />
-                      </View>
-                    </Animated.View>
-                  </Pressable>
-                );
-              }
+                    <Ionicons
+                      name={isVpnConnected ? 'shield-checkmark' : 'flash'}
+                      size={16}
+                      color="#FFFFFF"
+                      style={styles.centerInnerIcon}
+                    />
+                  </View>
+                </Animated.View>
+              </Pressable>
+            );
+          }
 
-              return (
-                <AnimatedTabItem
-                  key={route.key}
-                  routeName={route.name}
-                  config={config}
-                  isFocused={isFocused}
-                  activeCount={activeCount}
-                  reduceMotion={reduceMotion}
-                  onPress={() => {
-                    if (!isFocused) {
-                      navigateRoute(route);
-                    }
-                  }}
-                />
-              );
-            })}
-          </View>
-          </View>
-        </LinearGradient>
-      </View>
+          return (
+            <AnimatedTabItem
+              key={route.key}
+              routeName={route.name}
+              config={config}
+              isFocused={isFocused}
+              activeCount={activeCount}
+              reduceMotion={reduceMotion}
+              onPress={() => {
+                if (!isFocused) {
+                  navigateRoute(route);
+                }
+              }}
+            />
+          );
+        })}
+      </GlassSurface>
     </View>
   );
 });
@@ -318,23 +275,11 @@ const styles = StyleSheet.create({
   pillShell: {
     width: '86%',
     maxWidth: 326,
-    borderRadius: radius.pill,
-  },
-  pillRim: {
-    borderRadius: radius.pill,
-    padding: 1.25,
-  },
-  barContainer: {
-    width: '100%',
-    height: 60,
-    borderRadius: radius.pill,
-    backgroundColor: colors.glassBar,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.35)',
-    overflow: 'hidden',
+    borderRadius: 30,
   },
   tabsRow: {
-    flex: 1,
+    width: '100%',
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -348,7 +293,15 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     position: 'relative',
-    padding: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+  },
+  iconWrapFocused: {
+    backgroundColor: colors.glassActivePill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorderSubtle,
+    ...(Platform.OS === 'ios' ? { borderCurve: 'continuous' as const } : {}),
   },
   centerActionWrap: {
     flex: 1,

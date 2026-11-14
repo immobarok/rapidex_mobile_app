@@ -15,7 +15,7 @@ import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonList } from '@/components/Skeleton';
 import { triggerHaptic } from '@/lib/haptics';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useLibrary } from '../hooks/useLibrary';
 import { LibraryFilterCategory, LibraryFolderFilter } from '../types';
@@ -279,8 +279,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   controlChipText: {
     ...typography.caption,
@@ -292,8 +291,7 @@ const styles = StyleSheet.create({
     height: spacing.touchMin,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -305,8 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   searchInput: {
     flex: 1,
@@ -325,8 +322,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
     alignItems: 'center',
     justifyContent: 'center',
   },

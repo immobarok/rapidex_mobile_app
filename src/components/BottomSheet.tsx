@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
@@ -17,6 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassSurface } from '@/components/GlassSurface';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -79,33 +79,33 @@ export const BottomSheet = memo(function BottomSheet({
           />
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.sheetContainer,
-            { paddingBottom: Math.max(insets.bottom, spacing.lg) },
-            sheetAnimatedStyle,
-          ]}
-        >
-          {Platform.OS !== 'web' ? (
-            <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : null}
+        <Animated.View style={sheetAnimatedStyle}>
+          <GlassSurface
+            variant="sheet"
+            borderRadius={radius.xl}
+            isTopOnly
+            contentStyle={[
+              styles.sheetContainer,
+              { paddingBottom: Math.max(insets.bottom, spacing.lg) },
+            ]}
+          >
+            <View style={styles.handleIndicator} />
 
-          <View style={styles.handleIndicator} />
+            <View style={styles.headerRow}>
+              <Text style={styles.title}>{title}</Text>
+              <Pressable
+                onPress={onClose}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
+              </Pressable>
+            </View>
 
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable
-              onPress={onClose}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-
-          <View style={styles.body}>{children}</View>
+            <View style={styles.body}>{children}</View>
+          </GlassSurface>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -122,23 +122,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   sheetContainer: {
-    backgroundColor: colors.glassBackgroundStrong,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    overflow: 'hidden',
   },
   handleIndicator: {
-    width: 40,
-    height: 4,
+    width: 36,
+    height: 5,
     borderRadius: radius.pill,
-    backgroundColor: colors.textMuted,
+    backgroundColor: colors.glassGrabber,
     alignSelf: 'center',
     marginBottom: spacing.sm,
-    opacity: 0.45,
   },
   headerRow: {
     flexDirection: 'row',
@@ -157,6 +150,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceSubtle,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorderSubtle,
+    ...(Platform.OS === 'ios' ? { borderCurve: 'continuous' as const } : {}),
   },
   body: {
     gap: spacing.md,

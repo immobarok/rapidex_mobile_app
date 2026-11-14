@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, iosContinuousCurve, radius, spacing, typography } from '@/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
+    ...iosContinuousCurve,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -150,8 +151,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
+    ...glassBevelStyle,
     borderColor: colors.accentBorder,
+    borderTopColor: colors.accentBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
 import { GlassCard } from '@/components/GlassCard';
 import { triggerHaptic } from '@/lib/haptics';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, radius, spacing, typography } from '@/theme';
 import { useVpnStore, VPN_SERVERS } from '../store';
 import { VpnProtocol, VpnServer, VpnStatus } from '../types';
 
@@ -541,8 +541,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   securityPillActive: {
     backgroundColor: colors.successSurface,

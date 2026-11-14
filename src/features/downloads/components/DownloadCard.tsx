@@ -86,7 +86,8 @@ export const DownloadCard = memo(function DownloadCard({
       accessibilityLabel={`Download ${item.fileName}, status ${item.status}`}
     >
       <GlassCard
-        style={[styles.card, isSelected && styles.selectedCard]}
+        style={styles.card}
+        isSelected={isSelected}
         contentStyle={styles.content}
       >
         <View style={styles.mainRow}>
@@ -283,9 +284,6 @@ export const DownloadCard = memo(function DownloadCard({
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
-  },
-  selectedCard: {
-    borderColor: colors.accent,
   },
   content: {
     padding: spacing.md,

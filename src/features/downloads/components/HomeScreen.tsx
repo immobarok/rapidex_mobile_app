@@ -20,7 +20,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { Skeleton, SkeletonList } from '@/components/Skeleton';
 import { triggerHaptic } from '@/lib/haptics';
 import { validateDirectUrl } from '@/lib/validateUrl';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, glassBevelStyle, iosContinuousCurve, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useDownloads } from '../hooks/useDownloads';
 import {
@@ -304,7 +304,7 @@ export function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <GlassCard enableBlur intensity={42} contentStyle={styles.heroCard}>
+        <GlassCard enableBlur contentStyle={styles.heroCard}>
           <View style={styles.inputWrap}>
             <Pressable
               onPress={handleBrowseInput}
@@ -681,8 +681,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: colors.glassBackgroundStrong,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   vpnStatusPillActive: {
     backgroundColor: colors.successSurface,
@@ -798,8 +797,7 @@ const styles = StyleSheet.create({
     paddingRight: spacing.md,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    ...glassBevelStyle,
   },
   searchIconBadge: {
     width: 38,
@@ -859,6 +857,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: radius.md,
+    ...iosContinuousCurve,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.shadowDark,
@@ -881,8 +880,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    ...glassBevelStyle,
     alignItems: 'center',
     justifyContent: 'center',
   },
