@@ -15,8 +15,8 @@ type Props = {
 const webGlassStyle =
   Platform.OS === 'web'
     ? ({
-        backdropFilter: 'blur(10px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(10px) saturate(120%)',
+        backdropFilter: 'blur(16px) saturate(135%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(135%)',
       } as unknown as ViewStyle)
     : undefined;
 
@@ -24,7 +24,7 @@ export const GlassCard = memo(function GlassCard({
   children,
   style,
   contentStyle,
-  intensity = 18,
+  intensity = 28,
   enableBlur = true,
 }: Props) {
   return (
