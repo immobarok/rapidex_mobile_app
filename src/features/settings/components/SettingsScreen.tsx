@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { OrangeButton } from '@/components/OrangeButton';
 import { useDownloads } from '@/features/downloads/hooks/useDownloads';
 import { processDownloadQueue } from '@/features/downloads/services/downloadService';
+import { isValidExtractorEndpoint } from '@/features/downloads/services/mediaResolverService';
 import { formatBytes } from '@/lib/formatBytes';
 import { logError } from '@/lib/logger';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -44,15 +46,23 @@ export function SettingsScreen() {
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
   const autoRouteFolders = useSettingsStore((s) => s.autoRouteFolders);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
+  const extractorApiUrl = useSettingsStore((s) => s.extractorApiUrl);
   const setWifiOnly = useSettingsStore((s) => s.setWifiOnly);
   const setMaxConcurrent = useSettingsStore((s) => s.setMaxConcurrent);
   const setDefaultFolder = useSettingsStore((s) => s.setDefaultFolder);
   const setNotificationsEnabled = useSettingsStore((s) => s.setNotificationsEnabled);
   const setAutoRouteFolders = useSettingsStore((s) => s.setAutoRouteFolders);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
+  const setExtractorApiUrl = useSettingsStore((s) => s.setExtractorApiUrl);
 
   const [freeDiskBytes, setFreeDiskBytes] = useState<number>(0);
   const [totalDiskBytes, setTotalDiskBytes] = useState<number>(0);
+  const [extractorDraft, setExtractorDraft] = useState(extractorApiUrl);
+  const [extractorStatus, setExtractorStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExtractorDraft(extractorApiUrl);
+  }, [extractorApiUrl]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -114,6 +124,21 @@ export function SettingsScreen() {
   const handleChangeConcurrency = (option: MaxConcurrentOption) => {
     setMaxConcurrent(option);
     processDownloadQueue().catch(() => undefined);
+  };
+
+  const handleSaveExtractorUrl = () => {
+    const trimmed = extractorDraft.trim();
+    if (!trimmed) {
+      setExtractorApiUrl('');
+      setExtractorStatus('Cleared extractor URL.');
+      return;
+    }
+    if (!isValidExtractorEndpoint(trimmed)) {
+      setExtractorStatus('Enter a valid http:// or https:// endpoint URL.');
+      return;
+    }
+    setExtractorApiUrl(trimmed);
+    setExtractorStatus('Saved extractor server URL.');
   };
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -246,6 +271,42 @@ export function SettingsScreen() {
               })}
             </View>
           </View>
+        </GlassCard>
+
+        <GlassCard contentStyle={styles.sectionCard}>
+          <Text style={styles.sectionHeader}>Media Extractor Server</Text>
+          <Text style={styles.settingHint}>
+            Connect a self-hosted Cobalt or yt-dlp JSON endpoint to extract downloadable streams from shared YouTube and TikTok links.
+          </Text>
+          <View style={styles.extractorRow}>
+            <TextInput
+              value={extractorDraft}
+              onChangeText={(val) => {
+                setExtractorDraft(val);
+                if (extractorStatus) {
+                  setExtractorStatus(null);
+                }
+              }}
+              placeholder="https://your-extractor-api.com/"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              style={styles.extractorInput}
+              accessibilityLabel="Media extractor server URL"
+            />
+            <Pressable
+              onPress={handleSaveExtractorUrl}
+              accessibilityRole="button"
+              accessibilityLabel="Save extractor server URL"
+              style={styles.extractorSaveBtn}
+            >
+              <Text style={styles.extractorSaveText}>Save</Text>
+            </Pressable>
+          </View>
+          {extractorStatus ? (
+            <Text style={styles.extractorStatusText}>{extractorStatus}</Text>
+          ) : null}
         </GlassCard>
 
         <GlassCard contentStyle={styles.sectionCard}>
@@ -446,6 +507,38 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.accent,
     marginTop: spacing.xxs,
+  },
+  extractorRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  extractorInput: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    ...typography.caption,
+    color: colors.textPrimary,
+  },
+  extractorSaveBtn: {
+    minHeight: 42,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  extractorSaveText: {
+    ...typography.caption,
+    color: colors.textOnAccent,
+    fontWeight: '700',
+  },
+  extractorStatusText: {
+    ...typography.small,
+    color: colors.accent,
   },
 });
 

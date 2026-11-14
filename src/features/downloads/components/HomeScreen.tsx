@@ -19,7 +19,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/GlassCard';
 import { Skeleton, SkeletonList } from '@/components/Skeleton';
 import { triggerHaptic } from '@/lib/haptics';
-import { validateDirectUrl } from '@/lib/validateUrl';
+import { detectClipboardDownloadUrl } from '@/lib/validateUrl';
 import { colors, glassBevelStyle, iosContinuousCurve, radius, spacing, typography } from '@/theme';
 import { DownloadItemRecord } from '@/types';
 import { useDownloads } from '../hooks/useDownloads';
@@ -76,9 +76,9 @@ export function HomeScreen() {
         return;
       }
       const text = (await Clipboard.getStringAsync()).trim();
-      const validation = validateDirectUrl(text);
-      if (validation.isValid) {
-        setClipboardSuggestion(validation.normalizedUrl);
+      const detectedUrl = detectClipboardDownloadUrl(text);
+      if (detectedUrl) {
+        setClipboardSuggestion(detectedUrl);
       }
     } catch {
       // Ignore clipboard permission errors

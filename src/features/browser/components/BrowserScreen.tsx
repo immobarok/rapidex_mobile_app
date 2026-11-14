@@ -4,6 +4,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,14 +15,16 @@ import { WebView, WebViewNavigation, WebViewProps } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BackgroundBlobs } from '@/components/BackgroundBlobs';
+import { BottomSheet } from '@/components/BottomSheet';
 import { GlassCard } from '@/components/GlassCard';
 import { OrangeButton } from '@/components/OrangeButton';
 import { useDownloadsStore } from '@/features/downloads/store';
 import { triggerHaptic } from '@/lib/haptics';
 import { navigateBackOrHome } from '@/lib/navigation';
-import { validateDirectUrl } from '@/lib/validateUrl';
+import { validateAnyHttpUrl } from '@/lib/validateUrl';
 import { colors, glassBevelStyle, radius, spacing, typography } from '@/theme';
 import { resolveSearchOrUrl, useBrowserStore } from '../store';
+import { MEDIA_SNIFFER_SCRIPT, parseSniffedMediaMessage } from '../utils/browserSniffer';
 import {
   extractIntentFallbackUrl,
   getWebEmbedUrl,
@@ -40,6 +43,26 @@ const NativeWebView = WebView as unknown as React.ComponentType<
 
 const WEBVIEW_ALLOW_ALL_ORIGINS = ['*'];
 const IOS_SAFARI_UA_SUFFIX = 'Version/18.0 Safari/604.1';
+
+function getRouteIdentity(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+function getStreamSummary(streamUrl: string, index: number): string {
+  try {
+    const parsed = new URL(streamUrl);
+    const segment = parsed.pathname.split('/').filter(Boolean).pop();
+    const label = segment ? decodeURIComponent(segment) : parsed.hostname;
+    return `Stream ${index + 1} · ${label}`;
+  } catch {
+    return `Stream ${index + 1}`;
+  }
+}
 
 type Props = {
   initialUrl: string;
@@ -70,12 +93,27 @@ export function BrowserScreen({ initialUrl }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [detectedMediaUrls, setDetectedMediaUrls] = useState<string[]>([]);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const lastRouteIdentityRef = useRef(getRouteIdentity(resolvedInitial));
+
+  const resetSniffedMediaIfNavigated = useCallback((nextUrl: string) => {
+    const nextIdentity = getRouteIdentity(nextUrl);
+    if (nextIdentity !== lastRouteIdentityRef.current) {
+      lastRouteIdentityRef.current = nextIdentity;
+      setDetectedMediaUrls([]);
+      setIsMediaPickerOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
     setWebSourceUrl(resolvedInitial);
     setCurrentUrl(resolvedInitial);
     setAddressInput(resolvedInitial);
     setPageTitle(resolvedInitial);
+    lastRouteIdentityRef.current = getRouteIdentity(resolvedInitial);
+    setDetectedMediaUrls([]);
+    setIsMediaPickerOpen(false);
   }, [resolvedInitial]);
 
   const webEmbedUrl = useMemo(
@@ -90,6 +128,7 @@ export function BrowserScreen({ initialUrl }: Props) {
 
   const navigateInApp = useCallback(
     (nextUrl: string) => {
+      resetSniffedMediaIfNavigated(nextUrl);
       if (nextUrl === webSourceUrl) {
         webViewRef.current?.reload();
       } else {
@@ -98,7 +137,7 @@ export function BrowserScreen({ initialUrl }: Props) {
       setCurrentUrl(nextUrl);
       setAddressInput(nextUrl);
     },
-    [webSourceUrl]
+    [resetSniffedMediaIfNavigated, webSourceUrl]
   );
 
   const handleSubmitAddress = () => {
@@ -113,6 +152,7 @@ export function BrowserScreen({ initialUrl }: Props) {
     setIsLoading(navState.loading);
 
     if (navState.url) {
+      resetSniffedMediaIfNavigated(navState.url);
       setCurrentUrl(navState.url);
       if (!isEditingAddress) {
         setAddressInput(navState.url);
@@ -156,14 +196,51 @@ export function BrowserScreen({ initialUrl }: Props) {
     }
   };
 
+  const openUrlInAddSheet = useCallback(
+    (candidateUrl: string) => {
+      const check = validateAnyHttpUrl(candidateUrl);
+      if (check.isValid) {
+        openAddSheet(check.normalizedUrl);
+      } else {
+        openAddSheet();
+      }
+    },
+    [openAddSheet]
+  );
+
+  const handleWebViewMessage: NonNullable<WebViewProps['onMessage']> = (event) => {
+    const rawData = event.nativeEvent?.data;
+    if (!rawData) {
+      return;
+    }
+    const incoming = parseSniffedMediaMessage(rawData);
+    if (incoming.length === 0) {
+      return;
+    }
+    setDetectedMediaUrls((prev) => {
+      const merged = new Set(prev);
+      let added = false;
+      for (const url of incoming) {
+        if (!merged.has(url)) {
+          merged.add(url);
+          added = true;
+        }
+      }
+      return added ? Array.from(merged) : prev;
+    });
+  };
+
   const handleSaveDirectFile = () => {
     triggerHaptic('light');
-    const check = validateDirectUrl(currentUrl);
-    if (check.isValid) {
-      openAddSheet(check.normalizedUrl);
-    } else {
-      openAddSheet();
+    if (detectedMediaUrls.length === 1) {
+      openUrlInAddSheet(detectedMediaUrls[0]);
+      return;
     }
+    if (detectedMediaUrls.length > 1) {
+      setIsMediaPickerOpen(true);
+      return;
+    }
+    openUrlInAddSheet(currentUrl);
   };
 
   return (
@@ -292,6 +369,8 @@ export function BrowserScreen({ initialUrl }: Props) {
               onLoadProgress={(event) =>
                 setLoadProgress(event.nativeEvent.progress)
               }
+              injectedJavaScript={MEDIA_SNIFFER_SCRIPT}
+              onMessage={handleWebViewMessage}
               setSupportMultipleWindows={false}
               allowsInlineMediaPlayback
               allowsFullscreenVideo
@@ -388,17 +467,80 @@ export function BrowserScreen({ initialUrl }: Props) {
             onPress={handleSaveDirectFile}
             style={styles.downloadPill}
             accessibilityRole="button"
-            accessibilityLabel="Add direct download link"
+            accessibilityLabel={
+              detectedMediaUrls.length > 0
+                ? `Save ${detectedMediaUrls.length} detected media streams`
+                : 'Add download link'
+            }
           >
             <Ionicons
               name="cloud-download-outline"
               size={18}
               color={colors.textOnAccent}
             />
-            <Text style={styles.downloadPillText}>Save File</Text>
+            <Text style={styles.downloadPillText}>
+              {detectedMediaUrls.length > 0
+                ? `Save (${detectedMediaUrls.length})`
+                : 'Save File'}
+            </Text>
           </Pressable>
         </View>
       </View>
+
+      <BottomSheet
+        isVisible={isMediaPickerOpen}
+        title="Detected Media Streams"
+        onClose={() => setIsMediaPickerOpen(false)}
+      >
+        <ScrollView
+          style={styles.streamList}
+          contentContainerStyle={styles.streamListContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {detectedMediaUrls.map((streamUrl, index) => (
+            <Pressable
+              key={streamUrl}
+              onPress={() => {
+                triggerHaptic('selection');
+                setIsMediaPickerOpen(false);
+                openUrlInAddSheet(streamUrl);
+              }}
+              style={styles.streamRow}
+              accessibilityRole="button"
+              accessibilityLabel={`Download ${getStreamSummary(streamUrl, index)}`}
+            >
+              <View style={styles.streamRowTextWrap}>
+                <Text style={styles.streamTitle} numberOfLines={1}>
+                  {getStreamSummary(streamUrl, index)}
+                </Text>
+                <Text style={styles.streamUrl} numberOfLines={1}>
+                  {streamUrl}
+                </Text>
+              </View>
+              <Ionicons name="download-outline" size={20} color={colors.accent} />
+            </Pressable>
+          ))}
+
+          <Pressable
+            onPress={() => {
+              triggerHaptic('selection');
+              setIsMediaPickerOpen(false);
+              openUrlInAddSheet(currentUrl);
+            }}
+            style={styles.streamFallbackRow}
+            accessibilityRole="button"
+            accessibilityLabel="Extract Page URL"
+          >
+            <View style={styles.streamRowTextWrap}>
+              <Text style={styles.streamTitle}>Extract Page URL</Text>
+              <Text style={styles.streamUrl} numberOfLines={1}>
+                {currentUrl}
+              </Text>
+            </View>
+            <Ionicons name="sparkles-outline" size={20} color={colors.accent} />
+          </Pressable>
+        </ScrollView>
+      </BottomSheet>
     </BackgroundBlobs>
   );
 }
@@ -523,5 +665,48 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textOnAccent,
     fontWeight: '700',
+  },
+  streamList: {
+    maxHeight: 360,
+  },
+  streamListContent: {
+    gap: spacing.xs,
+  },
+  streamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.glassBackgroundStrong,
+    ...glassBevelStyle,
+  },
+  streamFallbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassBackground,
+  },
+  streamRowTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  streamTitle: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  streamUrl: {
+    ...typography.micro,
+    color: colors.textSecondary,
   },
 });

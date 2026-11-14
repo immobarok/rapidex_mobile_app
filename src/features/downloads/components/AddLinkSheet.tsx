@@ -18,6 +18,7 @@ import { triggerHaptic } from '@/lib/haptics';
 import {
   probeDirectUrl,
   UrlProbeMetadata,
+  validateAnyHttpUrl,
   validateDirectUrl,
 } from '@/lib/validateUrl';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -26,6 +27,7 @@ import {
   enqueueNewDownload,
   resolveSmartFolder,
 } from '../services/downloadService';
+import { MediaExtractorSection } from './MediaExtractorSection';
 
 const FOLDERS: SaveFolderOption[] = ['Downloads', 'Videos', 'Music', 'Documents'];
 
@@ -52,6 +54,7 @@ export function AddLinkSheet() {
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [probeMeta, setProbeMeta] = useState<UrlProbeMetadata | null>(null);
+  const [mediaPageUrl, setMediaPageUrl] = useState<string | null>(null);
   const [isProbing, setIsProbing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -67,6 +70,7 @@ export function AddLinkSheet() {
       setHeaderReferer('');
       setValidationError(null);
       setProbeMeta(null);
+      setMediaPageUrl(null);
     }
   }, [defaultFolder, isVisible, prefilledUrl]);
 
@@ -78,17 +82,31 @@ export function AddLinkSheet() {
     if (!trimmed) {
       setValidationError(null);
       setProbeMeta(null);
+      setMediaPageUrl(null);
       setFileName('');
       return;
     }
 
-    const validation = validateDirectUrl(trimmed);
+    const validation = validateAnyHttpUrl(trimmed);
     if (!validation.isValid) {
       setValidationError(validation.errorMessage);
       setProbeMeta(null);
+      setMediaPageUrl(null);
       return;
     }
 
+    if (validation.isMediaPage) {
+      setValidationError(null);
+      setProbeMeta(null);
+      setMediaPageUrl(validation.normalizedUrl);
+      setFileName('');
+      if (autoRouteFolders && !hasManualFolderPick) {
+        setSelectedFolder('Videos');
+      }
+      return;
+    }
+
+    setMediaPageUrl(null);
     setValidationError(null);
     setFileName(validation.suggestedFileName);
 
@@ -219,7 +237,11 @@ export function AddLinkSheet() {
   };
 
   return (
-    <BottomSheet isVisible={isVisible} title="Add Direct Link" onClose={closeAddSheet}>
+    <BottomSheet
+      isVisible={isVisible}
+      title={mediaPageUrl ? 'Save Video Link' : 'Add Link'}
+      onClose={closeAddSheet}
+    >
       <ScrollView
         style={styles.scrollBody}
         contentContainerStyle={styles.scrollContent}
@@ -254,17 +276,17 @@ export function AddLinkSheet() {
         {mode === 'single' ? (
           <>
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Direct File URL</Text>
+              <Text style={styles.label}>Video or Direct File URL</Text>
               <TextInput
                 value={urlInput}
                 onChangeText={setUrlInput}
-                placeholder="https://example.com/media/sample.mp4"
+                placeholder="YouTube, TikTok, or direct .mp4/.pdf URL"
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
                 style={styles.input}
-                accessibilityLabel="Direct file URL"
+                accessibilityLabel="Video or direct file URL"
               />
               {validationError ? (
                 <View style={styles.errorRow}>
@@ -274,63 +296,76 @@ export function AddLinkSheet() {
               ) : null}
             </View>
 
-            <View style={styles.previewRow}>
-              <View style={styles.nameColumn}>
-                <Text style={styles.label}>File Name</Text>
-                <TextInput
-                  value={fileName}
-                  onChangeText={setFileName}
-                  placeholder="filename.mp4"
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.input}
-                  accessibilityLabel="File name"
-                />
-              </View>
-              <View style={styles.sizeBadge}>
-                <Text style={styles.label}>Size</Text>
-                <View style={styles.sizeBox}>
-                  {isProbing ? (
-                    <ActivityIndicator size="small" color={colors.accent} />
-                  ) : (
-                    <Text style={styles.sizeValue} numberOfLines={1}>
-                      {probeMeta && probeMeta.sizeBytes > 0
-                        ? formatBytes(probeMeta.sizeBytes)
-                        : 'Unknown'}
-                    </Text>
-                  )}
+            {mediaPageUrl ? (
+              <MediaExtractorSection
+                mediaUrl={mediaPageUrl}
+                selectedFolder={selectedFolder}
+                hasManualFolderPick={hasManualFolderPick}
+                onAutoFolderChange={setSelectedFolder}
+                customHeaders={buildCustomHeaders()}
+                onCloseSheet={closeAddSheet}
+              />
+            ) : (
+              <>
+                <View style={styles.previewRow}>
+                  <View style={styles.nameColumn}>
+                    <Text style={styles.label}>File Name</Text>
+                    <TextInput
+                      value={fileName}
+                      onChangeText={setFileName}
+                      placeholder="filename.mp4"
+                      placeholderTextColor={colors.textMuted}
+                      style={styles.input}
+                      accessibilityLabel="File name"
+                    />
+                  </View>
+                  <View style={styles.sizeBadge}>
+                    <Text style={styles.label}>Size</Text>
+                    <View style={styles.sizeBox}>
+                      {isProbing ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Text style={styles.sizeValue} numberOfLines={1}>
+                          {probeMeta && probeMeta.sizeBytes > 0
+                            ? formatBytes(probeMeta.sizeBytes)
+                            : 'Unknown'}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
 
-            {probeMeta ? (
-              <View style={styles.probeBadgeRow}>
-                <View style={styles.probePill}>
-                  <Ionicons
-                    name={
-                      probeMeta.supportsRange
-                        ? 'checkmark-circle'
-                        : 'information-circle-outline'
-                    }
-                    size={14}
-                    color={
-                      probeMeta.supportsRange
-                        ? colors.success
-                        : colors.textSecondary
-                    }
-                  />
-                  <Text style={styles.probePillText}>
-                    {probeMeta.supportsRange
-                      ? 'Resumable Transfer'
-                      : 'Standard Transfer'}
-                  </Text>
-                </View>
-                <View style={styles.probePill}>
-                  <Text style={styles.probePillText}>
-                    {probeMeta.category.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
+                {probeMeta ? (
+                  <View style={styles.probeBadgeRow}>
+                    <View style={styles.probePill}>
+                      <Ionicons
+                        name={
+                          probeMeta.supportsRange
+                            ? 'checkmark-circle'
+                            : 'information-circle-outline'
+                        }
+                        size={14}
+                        color={
+                          probeMeta.supportsRange
+                            ? colors.success
+                            : colors.textSecondary
+                        }
+                      />
+                      <Text style={styles.probePillText}>
+                        {probeMeta.supportsRange
+                          ? 'Resumable Transfer'
+                          : 'Standard Transfer'}
+                      </Text>
+                    </View>
+                    <View style={styles.probePill}>
+                      <Text style={styles.probePillText}>
+                        {probeMeta.category.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            )}
           </>
         ) : (
           <View style={styles.fieldGroup}>
@@ -443,12 +478,14 @@ export function AddLinkSheet() {
         </View>
 
         {mode === 'single' ? (
-          <OrangeButton
-            label="Start Download"
-            onPress={handleStartSingle}
-            isLoading={isStarting}
-            isDisabled={!urlInput.trim() || Boolean(validationError)}
-          />
+          mediaPageUrl ? null : (
+            <OrangeButton
+              label="Start Download"
+              onPress={handleStartSingle}
+              isLoading={isStarting}
+              isDisabled={!urlInput.trim() || Boolean(validationError)}
+            />
+          )
         ) : (
           <OrangeButton
             label={

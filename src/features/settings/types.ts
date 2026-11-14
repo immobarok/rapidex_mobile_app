@@ -10,12 +10,14 @@ export type SettingsState = {
   hapticsEnabled: boolean;
   notificationsEnabled: boolean;
   hasCompletedOnboarding: boolean;
+  extractorApiUrl: string;
   setWifiOnly: (value: boolean) => void;
   setMaxConcurrent: (value: MaxConcurrentOption) => void;
   setDefaultFolder: (value: SaveFolderOption) => void;
   setAutoRouteFolders: (value: boolean) => void;
   setHapticsEnabled: (value: boolean) => void;
   setNotificationsEnabled: (value: boolean) => void;
+  setExtractorApiUrl: (url: string) => void;
   completeOnboarding: () => void;
   hydrateSettings: () => void;
 };

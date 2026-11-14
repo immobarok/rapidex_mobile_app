@@ -10,7 +10,18 @@ const KEYS = {
   HAPTICS_ENABLED: 'settings.hapticsEnabled',
   NOTIFICATIONS_ENABLED: 'settings.notificationsEnabled',
   ONBOARDING_DONE: 'settings.hasCompletedOnboarding',
+  EXTRACTOR_API_URL: 'settings.extractorApiUrl',
 } as const;
+
+const ENV_EXTRACTOR_URL = (process.env.EXPO_PUBLIC_EXTRACTOR_API_URL ?? '').trim();
+
+function readInitialExtractorUrl(): string {
+  const saved = kvStorage.getString(KEYS.EXTRACTOR_API_URL);
+  if (typeof saved === 'string' && saved.trim().length > 0) {
+    return saved.trim();
+  }
+  return ENV_EXTRACTOR_URL;
+}
 
 function readInitialMaxConcurrent(): MaxConcurrentOption {
   const saved = kvStorage.getNumber(KEYS.MAX_CONCURRENT);
@@ -41,6 +52,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   hapticsEnabled: kvStorage.getBoolean(KEYS.HAPTICS_ENABLED) ?? true,
   notificationsEnabled: kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
   hasCompletedOnboarding: kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
+  extractorApiUrl: readInitialExtractorUrl(),
 
   setWifiOnly: (value) => {
     kvStorage.set(KEYS.WIFI_ONLY, value);
@@ -72,6 +84,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ notificationsEnabled: value });
   },
 
+  setExtractorApiUrl: (url) => {
+    const trimmed = url.trim();
+    kvStorage.set(KEYS.EXTRACTOR_API_URL, trimmed);
+    set({ extractorApiUrl: trimmed });
+  },
+
   completeOnboarding: () => {
     kvStorage.set(KEYS.ONBOARDING_DONE, true);
     set({ hasCompletedOnboarding: true });
@@ -88,6 +106,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
       hasCompletedOnboarding:
         kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
+      extractorApiUrl: readInitialExtractorUrl(),
     });
   },
 }));

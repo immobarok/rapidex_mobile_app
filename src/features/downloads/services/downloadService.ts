@@ -619,3 +619,73 @@ export async function clearAllFailedDownloads(): Promise<void> {
   store.removeFailedItems();
   await deleteFailedDownloadsFromDb();
 }
+
+/**
+ * Copies a local video, audio, or document shared from another app into Rapidex's offline library.
+ */
+export async function importSharedLocalFile(payload: {
+  sourceUri: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes?: number | null;
+}): Promise<string> {
+  const id = `sh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const cleanName = sanitizeFileName(payload.fileName || `shared_${Date.now()}`);
+  const mimeType = inferMimeType(cleanName, payload.mimeType);
+  const category = detectFileCategory(cleanName, mimeType);
+  const { defaultFolder, autoRouteFolders } = useSettingsStore.getState();
+  const folder = autoRouteFolders ? resolveSmartFolder(category, defaultFolder) : defaultFolder;
+
+  let localUri = payload.sourceUri;
+  let totalBytes = payload.sizeBytes && payload.sizeBytes > 0 ? payload.sizeBytes : 0;
+
+  if (Platform.OS !== 'web') {
+    const hasSpace = await verifySufficientStorage(totalBytes);
+    if (!hasSpace) {
+      useDownloadsStore
+        .getState()
+        .setErrorBanner('Low device storage. Free up space before saving this file.');
+      throw new Error('Insufficient storage space on device.');
+    }
+
+    const targetUri = await buildSafeLocalUri(folder, cleanName, id);
+    await FileSystem.copyAsync({ from: payload.sourceUri, to: targetUri });
+    localUri = targetUri;
+
+    try {
+      const info = await FileSystem.getInfoAsync(targetUri);
+      if (info.exists && typeof info.size === 'number' && info.size > 0) {
+        totalBytes = info.size;
+      }
+    } catch {
+      // Keep fallback size
+    }
+  }
+
+  const now = Date.now();
+  const record: DownloadItemRecord = {
+    id,
+    url: payload.sourceUri,
+    fileName: cleanName,
+    localUri,
+    folder,
+    category,
+    mimeType,
+    totalBytes,
+    downloadedBytes: totalBytes,
+    status: 'completed',
+    errorMessage: null,
+    resumeData: null,
+    headersJson: null,
+    createdAt: now,
+    completedAt: now,
+    lastPlaybackPositionMs: 0,
+    durationMs: 0,
+  };
+
+  useDownloadsStore.getState().upsertItem(record);
+  await upsertDownloadInDb(record);
+  triggerHaptic('success');
+  await notifyDownloadComplete(cleanName);
+  return id;
+}

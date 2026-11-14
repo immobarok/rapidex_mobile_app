@@ -1,7 +1,7 @@
 import { detectFileCategory, getFileExtension, inferMimeType, sanitizeFileName } from './fileType';
 import { FileCategory } from '@/types';
 
-const RESTRICTED_HOST_PATTERNS = [
+const MEDIA_PAGE_HOST_PATTERNS = [
   /(^|\.)youtube\.com$/i,
   /(^|\.)youtu\.be$/i,
   /(^|\.)facebook\.com$/i,
@@ -20,6 +20,7 @@ export type UrlValidationResult =
       isValid: true;
       normalizedUrl: string;
       suggestedFileName: string;
+      isMediaPage?: boolean;
     }
   | {
       isValid: false;
@@ -36,12 +37,44 @@ export type UrlProbeMetadata = {
   warningMessage: string | null;
 };
 
-export function validateDirectUrl(rawInput: string): UrlValidationResult {
+/**
+ * Extracts the first HTTP(S) URL from shared or copied text such as YouTube share messages.
+ */
+export function extractFirstHttpUrl(rawText: string): string | null {
+  const match = rawText.match(/https?:\/\/[^\s<>"']+/i);
+  if (!match?.[0]) {
+    return null;
+  }
+  return match[0].replace(/[),.;!?]+$/, '');
+}
+
+/**
+ * Returns true if the URL host belongs to a video/social streaming platform page
+ * requiring stream extraction rather than direct binary download.
+ */
+export function isMediaPageHost(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl.trim());
+    const host = parsed.hostname.toLowerCase();
+    return MEDIA_PAGE_HOST_PATTERNS.some((pattern) => pattern.test(host));
+  } catch {
+    return false;
+  }
+}
+
+function parseValidatedHttpUrl(rawInput: string):
+  | {
+      ok: true;
+      parsed: URL;
+      suggestedFileName: string;
+      isMediaPage: boolean;
+    }
+  | { ok: false; errorMessage: string } {
   const trimmed = rawInput.trim();
   if (!trimmed) {
     return {
-      isValid: false,
-      errorMessage: 'Paste a direct file link (for example, https://example.com/video.mp4).',
+      ok: false,
+      errorMessage: 'Paste a video or direct file link (for example, https://example.com/video.mp4).',
     };
   }
 
@@ -50,30 +83,20 @@ export function validateDirectUrl(rawInput: string): UrlValidationResult {
     parsed = new URL(trimmed);
   } catch {
     return {
-      isValid: false,
+      ok: false,
       errorMessage: 'Please enter a valid URL starting with https:// or http://.',
     };
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
     return {
-      isValid: false,
-      errorMessage: 'Only direct HTTP and HTTPS file links are supported.',
+      ok: false,
+      errorMessage: 'Only HTTP and HTTPS links are supported.',
     };
   }
 
   const host = parsed.hostname.toLowerCase();
-  const isRestrictedPlatform = RESTRICTED_HOST_PATTERNS.some((pattern) =>
-    pattern.test(host)
-  );
-
-  if (isRestrictedPlatform) {
-    return {
-      isValid: false,
-      errorMessage:
-        'Streaming platforms are not supported. Please paste a direct file link that you have the right to save.',
-    };
-  }
+  const isMediaPage = MEDIA_PAGE_HOST_PATTERNS.some((pattern) => pattern.test(host));
 
   const pathSegments = parsed.pathname.split('/').filter(Boolean);
   const lastSegment = pathSegments[pathSegments.length - 1] ?? '';
@@ -85,17 +108,68 @@ export function validateDirectUrl(rawInput: string): UrlValidationResult {
   }
 
   const ext = getFileExtension(decodedName);
-  const defaultName = decodedName
-    ? sanitizeFileName(decodedName)
-    : `download_${Date.now()}.bin`;
-
-  const suggestedFileName = ext ? defaultName : `${defaultName}`;
+  const fallbackBase = isMediaPage ? `video_${Date.now()}.mp4` : `download_${Date.now()}.bin`;
+  const defaultName = decodedName ? sanitizeFileName(decodedName) : fallbackBase;
+  const suggestedFileName =
+    isMediaPage && !ext ? `${sanitizeFileName(defaultName)}.mp4` : defaultName;
 
   return {
-    isValid: true,
-    normalizedUrl: parsed.toString(),
+    ok: true,
+    parsed,
     suggestedFileName,
+    isMediaPage,
   };
+}
+
+/**
+ * Validates any HTTP(S) URL, tagging whether it belongs to a streaming page like YouTube or TikTok.
+ */
+export function validateAnyHttpUrl(rawInput: string): UrlValidationResult {
+  const res = parseValidatedHttpUrl(rawInput);
+  if (!res.ok) {
+    return { isValid: false, errorMessage: res.errorMessage };
+  }
+  return {
+    isValid: true,
+    normalizedUrl: res.parsed.toString(),
+    suggestedFileName: res.suggestedFileName,
+    isMediaPage: res.isMediaPage,
+  };
+}
+
+/**
+ * Validates direct downloadable file URLs and rejects unextracted streaming page URLs.
+ */
+export function validateDirectUrl(rawInput: string): UrlValidationResult {
+  const res = parseValidatedHttpUrl(rawInput);
+  if (!res.ok) {
+    return { isValid: false, errorMessage: res.errorMessage };
+  }
+  if (res.isMediaPage) {
+    return {
+      isValid: false,
+      errorMessage:
+        'Streaming page links need extraction first. Resolve a direct video stream or use a direct file link.',
+    };
+  }
+  return {
+    isValid: true,
+    normalizedUrl: res.parsed.toString(),
+    suggestedFileName: res.suggestedFileName,
+    isMediaPage: false,
+  };
+}
+
+/**
+ * Extracts a downloadable or extractable HTTP(S) link from clipboard text.
+ */
+export function detectClipboardDownloadUrl(rawText: string): string | null {
+  const candidate = extractFirstHttpUrl(rawText);
+  if (!candidate) {
+    return null;
+  }
+  const check = validateAnyHttpUrl(candidate);
+  return check.isValid ? check.normalizedUrl : null;
 }
 
 function parseContentDispositionFileName(header: string | null): string | null {

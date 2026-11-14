@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
+import { ShareIntentProvider } from 'expo-share-intent';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ShareIntentListener } from '@/components/ShareIntentListener';
 import { BookmarksHistorySheet } from '@/features/browser/components/BookmarksHistorySheet';
 import { useBrowserStore } from '@/features/browser/store';
 import { AddLinkSheet } from '@/features/downloads/components/AddLinkSheet';
@@ -40,36 +42,44 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <ErrorBoundary>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
+          <ShareIntentProvider
+            options={{
+              disabled: Platform.OS === 'web',
+              resetOnBackground: false,
             }}
           >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="onboarding"
-              options={{ headerShown: false, animation: 'fade' }}
-            />
-            <Stack.Screen
-              name="browser"
-              options={{
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
                 headerShown: false,
-                animation: 'slide_from_right',
+                contentStyle: { backgroundColor: colors.background },
               }}
-            />
-            <Stack.Screen
-              name="player/[id]"
-              options={{
-                headerShown: false,
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
-              }}
-            />
-          </Stack>
-          <AddLinkSheet />
-          <BookmarksHistorySheet />
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="onboarding"
+                options={{ headerShown: false, animation: 'fade' }}
+              />
+              <Stack.Screen
+                name="browser"
+                options={{
+                  headerShown: false,
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="player/[id]"
+                options={{
+                  headerShown: false,
+                  presentation: 'fullScreenModal',
+                  animation: 'slide_from_bottom',
+                }}
+              />
+            </Stack>
+            <ShareIntentListener />
+            <AddLinkSheet />
+            <BookmarksHistorySheet />
+          </ShareIntentProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
