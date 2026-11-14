@@ -13,6 +13,7 @@ import { useBrowserStore } from '@/features/browser/store';
 import { AddLinkSheet } from '@/features/downloads/components/AddLinkSheet';
 import { hydrateDownloadsAndRecoverQueue } from '@/features/downloads/services/downloadService';
 import { useSettingsStore } from '@/features/settings/store';
+import { useVpnAutoConnect } from '@/features/vpn/hooks/useVpnAutoConnect';
 import { useVpnStore } from '@/features/vpn/store';
 import { colors } from '@/theme';
 
@@ -30,6 +31,8 @@ export default function RootLayout() {
   const hydrateSettings = useSettingsStore((s) => s.hydrateSettings);
   const hydrateBrowser = useBrowserStore((s) => s.hydrateBrowser);
   const hydrateVpn = useVpnStore((s) => s.hydrateVpn);
+
+  useVpnAutoConnect();
 
   useEffect(() => {
     hydrateSettings();

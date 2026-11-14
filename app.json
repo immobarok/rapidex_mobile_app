@@ -81,7 +81,9 @@
             "video/*"
           ]
         }
-      ]
+      ],
+      "react-native-wireguard-vpn-patched",
+      "./plugins/withRapidexVpn"
     ],
     "experiments": {
       "typedRoutes": true,

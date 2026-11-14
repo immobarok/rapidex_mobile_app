@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@aliakhgar1/react-native-openvpn": "^1.0.0",
     "@expo/ui": "~58.0.28",
     "@expo/vector-icons": "^15.1.1",
     "@shopify/flash-list": "^2.3.3",
@@ -11,6 +12,7 @@
     "expo-clipboard": "^58.0.4",
     "expo-constants": "~58.0.16",
     "expo-device": "~58.0.5",
+    "expo-document-picker": "~58.0.5",
     "expo-file-system": "^58.0.13",
     "expo-font": "~58.0.12",
     "expo-glass-effect": "~58.0.5",
@@ -41,6 +43,7 @@
     "react-native-svg": "^15.16.1",
     "react-native-web": "~0.21.4",
     "react-native-webview": "^14.0.1",
+    "react-native-wireguard-vpn-patched": "^1.0.22-patch.2",
     "react-native-worklets": "0.13.0",
     "zustand": "^5.1.0"
   },

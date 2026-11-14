@@ -27,6 +27,82 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { useSettingsStore } from '../store';
 import { MaxConcurrentOption, SaveFolderOption } from '../types';
 
+type EndpointCardProps = {
+  title: string;
+  description: string;
+  placeholder: string;
+  accessibilityLabel: string;
+  value: string;
+  onSave: (url: string) => void;
+};
+
+function EndpointSettingCard({
+  title,
+  description,
+  placeholder,
+  accessibilityLabel,
+  value,
+  onSave,
+}: EndpointCardProps) {
+  const [draft, setDraft] = useState(value);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const handleSave = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      onSave('');
+      setStatusMessage('Cleared server URL.');
+      return;
+    }
+    if (!isValidExtractorEndpoint(trimmed)) {
+      setStatusMessage('Enter a valid http:// or https:// endpoint URL.');
+      return;
+    }
+    onSave(trimmed);
+    setStatusMessage('Saved server URL.');
+  };
+
+  return (
+    <GlassCard contentStyle={styles.sectionCard}>
+      <Text style={styles.sectionHeader}>{title}</Text>
+      <Text style={styles.settingHint}>{description}</Text>
+      <View style={styles.extractorRow}>
+        <TextInput
+          value={draft}
+          onChangeText={(val) => {
+            setDraft(val);
+            if (statusMessage) {
+              setStatusMessage(null);
+            }
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          style={styles.extractorInput}
+          accessibilityLabel={accessibilityLabel}
+        />
+        <Pressable
+          onPress={handleSave}
+          accessibilityRole="button"
+          accessibilityLabel={`Save ${title}`}
+          style={styles.extractorSaveBtn}
+        >
+          <Text style={styles.extractorSaveText}>Save</Text>
+        </Pressable>
+      </View>
+      {statusMessage ? (
+        <Text style={styles.extractorStatusText}>{statusMessage}</Text>
+      ) : null}
+    </GlassCard>
+  );
+}
+
 const CONCURRENCY_OPTIONS: MaxConcurrentOption[] = [1, 2, 3, 4];
 const FOLDER_OPTIONS: SaveFolderOption[] = [
   'Downloads',
@@ -47,6 +123,7 @@ export function SettingsScreen() {
   const autoRouteFolders = useSettingsStore((s) => s.autoRouteFolders);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const extractorApiUrl = useSettingsStore((s) => s.extractorApiUrl);
+  const vpnApiUrl = useSettingsStore((s) => s.vpnApiUrl);
   const setWifiOnly = useSettingsStore((s) => s.setWifiOnly);
   const setMaxConcurrent = useSettingsStore((s) => s.setMaxConcurrent);
   const setDefaultFolder = useSettingsStore((s) => s.setDefaultFolder);
@@ -54,15 +131,10 @@ export function SettingsScreen() {
   const setAutoRouteFolders = useSettingsStore((s) => s.setAutoRouteFolders);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
   const setExtractorApiUrl = useSettingsStore((s) => s.setExtractorApiUrl);
+  const setVpnApiUrl = useSettingsStore((s) => s.setVpnApiUrl);
 
   const [freeDiskBytes, setFreeDiskBytes] = useState<number>(0);
   const [totalDiskBytes, setTotalDiskBytes] = useState<number>(0);
-  const [extractorDraft, setExtractorDraft] = useState(extractorApiUrl);
-  const [extractorStatus, setExtractorStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    setExtractorDraft(extractorApiUrl);
-  }, [extractorApiUrl]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -124,21 +196,6 @@ export function SettingsScreen() {
   const handleChangeConcurrency = (option: MaxConcurrentOption) => {
     setMaxConcurrent(option);
     processDownloadQueue().catch(() => undefined);
-  };
-
-  const handleSaveExtractorUrl = () => {
-    const trimmed = extractorDraft.trim();
-    if (!trimmed) {
-      setExtractorApiUrl('');
-      setExtractorStatus('Cleared extractor URL.');
-      return;
-    }
-    if (!isValidExtractorEndpoint(trimmed)) {
-      setExtractorStatus('Enter a valid http:// or https:// endpoint URL.');
-      return;
-    }
-    setExtractorApiUrl(trimmed);
-    setExtractorStatus('Saved extractor server URL.');
   };
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -273,41 +330,23 @@ export function SettingsScreen() {
           </View>
         </GlassCard>
 
-        <GlassCard contentStyle={styles.sectionCard}>
-          <Text style={styles.sectionHeader}>Media Extractor Server</Text>
-          <Text style={styles.settingHint}>
-            Connect a self-hosted Cobalt or yt-dlp JSON endpoint to extract downloadable streams from shared YouTube and TikTok links.
-          </Text>
-          <View style={styles.extractorRow}>
-            <TextInput
-              value={extractorDraft}
-              onChangeText={(val) => {
-                setExtractorDraft(val);
-                if (extractorStatus) {
-                  setExtractorStatus(null);
-                }
-              }}
-              placeholder="https://your-extractor-api.com/"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              style={styles.extractorInput}
-              accessibilityLabel="Media extractor server URL"
-            />
-            <Pressable
-              onPress={handleSaveExtractorUrl}
-              accessibilityRole="button"
-              accessibilityLabel="Save extractor server URL"
-              style={styles.extractorSaveBtn}
-            >
-              <Text style={styles.extractorSaveText}>Save</Text>
-            </Pressable>
-          </View>
-          {extractorStatus ? (
-            <Text style={styles.extractorStatusText}>{extractorStatus}</Text>
-          ) : null}
-        </GlassCard>
+        <EndpointSettingCard
+          title="Media Extractor Server"
+          description="Connect a self-hosted Cobalt or yt-dlp JSON endpoint to extract downloadable streams from shared YouTube and TikTok links."
+          placeholder="https://your-extractor-api.com/"
+          accessibilityLabel="Media extractor server URL"
+          value={extractorApiUrl}
+          onSave={setExtractorApiUrl}
+        />
+
+        <EndpointSettingCard
+          title="VPN Provisioning Server"
+          description="Optional WireGuard API endpoint returning server nodes and signed peer configs. You can also import .conf files directly in the VPN tab."
+          placeholder="https://your-vpn-api.com/servers"
+          accessibilityLabel="VPN provisioning server URL"
+          value={vpnApiUrl}
+          onSave={setVpnApiUrl}
+        />
 
         <GlassCard contentStyle={styles.sectionCard}>
           <Text style={styles.sectionHeader}>Storage Usage</Text>

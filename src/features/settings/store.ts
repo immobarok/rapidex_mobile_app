@@ -11,16 +11,18 @@ const KEYS = {
   NOTIFICATIONS_ENABLED: 'settings.notificationsEnabled',
   ONBOARDING_DONE: 'settings.hasCompletedOnboarding',
   EXTRACTOR_API_URL: 'settings.extractorApiUrl',
+  VPN_API_URL: 'settings.vpnApiUrl',
 } as const;
 
 const ENV_EXTRACTOR_URL = (process.env.EXPO_PUBLIC_EXTRACTOR_API_URL ?? '').trim();
+const ENV_VPN_API_URL = (process.env.EXPO_PUBLIC_VPN_API_URL ?? '').trim();
 
-function readInitialExtractorUrl(): string {
-  const saved = kvStorage.getString(KEYS.EXTRACTOR_API_URL);
+function readInitialEndpoint(key: string, envFallback: string): string {
+  const saved = kvStorage.getString(key);
   if (typeof saved === 'string' && saved.trim().length > 0) {
     return saved.trim();
   }
-  return ENV_EXTRACTOR_URL;
+  return envFallback;
 }
 
 function readInitialMaxConcurrent(): MaxConcurrentOption {
@@ -52,7 +54,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   hapticsEnabled: kvStorage.getBoolean(KEYS.HAPTICS_ENABLED) ?? true,
   notificationsEnabled: kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
   hasCompletedOnboarding: kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
-  extractorApiUrl: readInitialExtractorUrl(),
+  extractorApiUrl: readInitialEndpoint(KEYS.EXTRACTOR_API_URL, ENV_EXTRACTOR_URL),
+  vpnApiUrl: readInitialEndpoint(KEYS.VPN_API_URL, ENV_VPN_API_URL),
 
   setWifiOnly: (value) => {
     kvStorage.set(KEYS.WIFI_ONLY, value);
@@ -90,6 +93,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ extractorApiUrl: trimmed });
   },
 
+  setVpnApiUrl: (url) => {
+    const trimmed = url.trim();
+    kvStorage.set(KEYS.VPN_API_URL, trimmed);
+    set({ vpnApiUrl: trimmed });
+  },
+
   completeOnboarding: () => {
     kvStorage.set(KEYS.ONBOARDING_DONE, true);
     set({ hasCompletedOnboarding: true });
@@ -106,7 +115,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         kvStorage.getBoolean(KEYS.NOTIFICATIONS_ENABLED) ?? false,
       hasCompletedOnboarding:
         kvStorage.getBoolean(KEYS.ONBOARDING_DONE) ?? false,
-      extractorApiUrl: readInitialExtractorUrl(),
+      extractorApiUrl: readInitialEndpoint(KEYS.EXTRACTOR_API_URL, ENV_EXTRACTOR_URL),
+      vpnApiUrl: readInitialEndpoint(KEYS.VPN_API_URL, ENV_VPN_API_URL),
     });
   },
 }));

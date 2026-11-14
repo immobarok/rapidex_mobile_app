@@ -11,6 +11,7 @@ export type SettingsState = {
   notificationsEnabled: boolean;
   hasCompletedOnboarding: boolean;
   extractorApiUrl: string;
+  vpnApiUrl: string;
   setWifiOnly: (value: boolean) => void;
   setMaxConcurrent: (value: MaxConcurrentOption) => void;
   setDefaultFolder: (value: SaveFolderOption) => void;
@@ -18,6 +19,7 @@ export type SettingsState = {
   setHapticsEnabled: (value: boolean) => void;
   setNotificationsEnabled: (value: boolean) => void;
   setExtractorApiUrl: (url: string) => void;
+  setVpnApiUrl: (url: string) => void;
   completeOnboarding: () => void;
   hydrateSettings: () => void;
 };
